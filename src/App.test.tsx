@@ -47,10 +47,10 @@ describe('Navegación y cotización',()=>{
   await user.type(screen.getByLabelText('Área de superficie 1 (m²)'),'21');await user.type(screen.getByLabelText('Rendimiento de ficha técnica (m² por envase)'),'10');await user.click(calculateButton());
   expect(screen.getByText('3 cubetas completas')).toBeVisible();expect(screen.getByText('$3,900 MXN')).toBeVisible();
  });
- it('sin precio conserva cantidad y muestra Total por confirmar',async()=>{
-  const user=userEvent.setup();render(<App/>);await openWork(user,'concreto');
+ it('calcula el total del yeso con su precio confirmado',async()=>{
+  const user=userEvent.setup();render(<App/>);await openWork(user,'otros');
   await user.type(screen.getByLabelText('Área de superficie 1 (m²)'),'21');await user.type(screen.getByLabelText('Rendimiento de ficha técnica (m² por envase)'),'10');await user.click(calculateButton());
-  expect(screen.getByText('3 bultos completos')).toBeVisible();expect(screen.getByText('Total por confirmar')).toBeVisible();
+  expect(screen.getByText('3 bultos completos')).toBeVisible();expect(screen.getByText('$444 MXN')).toBeVisible();
  });
  it('suma superficies con dimensiones y decimales con coma, y permite editarlas',async()=>{
   const user=userEvent.setup();render(<App/>);await openCard(user);

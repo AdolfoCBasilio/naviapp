@@ -48,6 +48,6 @@ La referencia visual disponible está en `public/images/referencias:mockup-navi-
 
 La interfaz usa grafito, texto claro y verde lima `#B8F55E`, cuadrícula de dos columnas desde 320 px y cuatro en escritorio. El selector de categorías se abre con un botón y puede cerrarse con Escape; combina su filtro con la búsqueda. La barra móvil reserva espacio inferior y área segura.
 
-Adeblok Constructor y Adeblok Plus usan las fotos de 40 kg: `adeblokconstructor40kg.png` y `ADEBLOKPLUS40kg.png`. Yeso y Blanco de España usan marcadores neutros. Las fotos se muestran completas con `object-fit: contain`.
+Adeblok Constructor y Adeblok Plus usan las fotos de 40 kg: `adeblokconstructor40kg.png` y `ADEBLOKPLUS40kg.png`. Yeso y Blanco de España usan `yesodeaxochiapan.png` y `blancoespana.png`. Las fotos se muestran completas con `object-fit: contain`; `imageScale` compensa sus márgenes blancos para que los empaques ocupen aproximadamente el 80% del recuadro.
 
 Verificación del rediseño: pruebas de componentes y cálculo; Chrome a 320, 390, 430 y 1440 px para el recorrido de 14 m² y 4 mm, copia, edición, filtros, desplazamiento y ausencia de desbordamiento horizontal. La app no se publica automáticamente.

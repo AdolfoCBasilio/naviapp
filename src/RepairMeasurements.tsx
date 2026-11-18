@@ -1,8 +1,9 @@
-import {useId, useLayoutEffect, useRef, useState} from 'react';
+import {useId, useLayoutEffect, useRef} from 'react';
 import {
  blankCrack, crackFieldId, crackMeasure, crackVolume, crackWarning, formatVolume,
  volumeReference, type Crack, type CrackDimension,
 } from './CrackMeasurements';
+import {MeasurementActions,useMeasurementEditor} from './MeasurementEditor';
 import {SealSpan,SealCut} from './SealDiagrams';
 import type {Product} from './catalog';
 
@@ -22,11 +23,17 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
  onChange:(crack:Crack)=>void; onRemove:()=>void;
 }) {
  const marker=useId();
- const fields=useRef<Partial<Record<CrackDimension,HTMLInputElement>>>({});
- const [active,setActive]=useState<CrackDimension>();
- const length=visualSize(crack.length,39,122,2);
- const width=visualSize(crack.width,16,68,8);
- const depth=visualSize(crack.depth,23,89,12);
+ const card=useRef<HTMLElement>(null);
+ const editor=useMeasurementEditor<CrackDimension>({
+  card,values:crack,parse:crackMeasure,enabled:seal,order:['length','width','depth'],
+  onChange:(key,value)=>onChange({...crack,[key]:value}),
+ });
+ const {draft,next,active}=editor;
+ const preview=draft?{...crack,[draft.key]:draft.value}:crack;
+ const geometry=draft?{...crack,[draft.key]:draft.lastValid}:crack;
+ const length=visualSize(geometry.length,39,122,2);
+ const width=visualSize(geometry.width,16,68,8);
+ const depth=visualSize(geometry.depth,23,89,12);
  const item=seal?'tramo':'grieta';
  const itemTitle=seal?'Tramo':'Grieta';
  const labelId=`repair-crack-${crack.id}`;
@@ -34,38 +41,52 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
  const field=(key:CrackDimension)=>{
   const {label}=dimensions[key];
   const id=crackFieldId(crack,key);
-  return <div className="repair-field">
+  const editing=draft?.key===key;
+  const error=editing?(draft.error?`Ingresa ${key==='length'?'un largo':key==='width'?'un ancho':'una profundidad'} mayor que cero.`:undefined):errors[id];
+  return <div className="repair-field" hidden={!!draft&&!editing} data-next={next===key}>
    <label htmlFor={id}>{label}<span className="sr-only"> · {itemTitle} {index+1}</span></label>
-   <input id={id} ref={element=>{if(element)fields.current[key]=element;}} inputMode="decimal"
-    value={crack[key]} onChange={event=>onChange({...crack,[key]:event.target.value})}
-    onFocus={()=>setActive(key)} onBlur={()=>setActive(undefined)}
-    aria-invalid={!!errors[id]} aria-describedby={errors[id]?`${id}-error`:undefined}/>
-   {errors[id]&&<small className="error" id={`${id}-error`}>{errors[id]}</small>}
+   <input id={id} ref={element=>{if(element)editor.inputs.current[key]=element;}} inputMode="decimal" enterKeyHint={seal?'done':undefined}
+    value={preview[key]} onChange={event=>editor.change(key,event.target.value)}
+    onFocus={()=>editor.begin(key)} onBlur={editor.blur}
+    onKeyDown={event=>{
+     if(editing&&(event.key==='Enter'||event.key==='Escape')){
+      event.preventDefault();
+      editor.finish(event.key==='Enter');
+     }
+    }}
+    aria-invalid={!!error} aria-describedby={error?`${id}-error`:next===key?`${id}-next`:undefined}/>
+   {next===key&&<small id={`${id}-next`} className="roof-next-label">Siguiente medida</small>}
+   {error&&<small className="error" id={`${id}-error`} role={editing?'alert':undefined}>{error}</small>}
   </div>;
  };
 
  const dimensionButton=(key:CrackDimension)=>{
   const {name,unit}=dimensions[key];
-  const value=!seal||Number.isFinite(crackMeasure(crack[key]))?crack[key].trim():'';
+  const value=!seal||Number.isFinite(crackMeasure(preview[key]))?preview[key].trim():'';
+  const text=`${name} ${value||'—'} ${unit}`;
+  if(draft)return active===key?<span className="roof-edit-gauge">{text}</span>:null;
   return <button type="button" className={`repair-dimension repair-dimension-${key}`}
    data-active={active===key} aria-controls={crackFieldId(crack,key)}
-   onClick={()=>{fields.current[key]?.focus();fields.current[key]?.select();}}>
-   <span>{name} {value||'—'} {unit}</span>
+   onClick={()=>editor.edit(key)}>
+   <span>{text}</span>
    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m3 10 7-7 3 3-7 7-4 1zM9 4l3 3"/></svg>
   </button>;
  };
 
  let volume:number|undefined;
- try {volume=crackVolume(crack);} catch { /* Las medidas siguen pendientes. */ }
+ try {volume=crackVolume(preview);} catch { /* Las medidas siguen pendientes. */ }
 
- return <section className="repair-crack" aria-labelledby={labelId}>
+ return <section ref={card} tabIndex={seal?-1:undefined} className={`repair-crack${draft?' measurement-editing seal-editing':''}`}
+  role={draft?'dialog':undefined} aria-modal={draft?true:undefined}
+  aria-label={draft?`Editar tramo ${index+1}`:undefined} aria-labelledby={draft?undefined:labelId} data-edit-dimension={draft?.key}>
+  <div className="measurement-edit-content">
   <div className="repair-panels">
-   <section className="repair-panel">
+   <section className="repair-panel seal-length-panel">
     <h2><span>1.</span> {seal?'Mide el tramo':'Mide tu grieta'}</h2>
     <p className="repair-caption">{seal?'Mide la longitud que vas a rellenar':'Mide el hueco que vas a rellenar'}</p>
     <h3 id={labelId}>{itemTitle} {index+1}</h3>
-    {seal?<SealSpan length={visualSize(crack.length,55,235,2)}
-     pending={!Number.isFinite(crackMeasure(crack.length))} active={active==='length'} control={dimensionButton('length')}/>:<div className="repair-length-art">
+    {seal?<SealSpan length={visualSize(geometry.length,55,235,2)}
+     pending={!Number.isFinite(crackMeasure(geometry.length))} active={active==='length'} control={dimensionButton('length')}/>:<div className="repair-length-art">
      <svg viewBox="0 0 160 164" aria-hidden="true">
       <defs>
        <linearGradient id={`${marker}-wall`}><stop stopColor="#8c908b"/><stop offset="1" stopColor="#bfc2bc"/></linearGradient>
@@ -89,10 +110,10 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
     {!seal&&<p className="repair-figure-note">Toca una medida para editarla</p>}
     {field('length')}
    </section>
-   <section className="repair-panel">
+   <section className="repair-panel seal-cut-panel">
     <h2><span>2.</span> Ancho y profundidad</h2>
-    {seal?<SealCut width={visualSize(crack.width,28,96,10)} depth={visualSize(crack.depth,19,66,8)}
-     pending={!Number.isFinite(crackMeasure(crack.width))||!Number.isFinite(crackMeasure(crack.depth))}
+    {seal?<SealCut width={visualSize(geometry.width,28,96,10)} depth={visualSize(geometry.depth,19,66,8)}
+     pending={!Number.isFinite(crackMeasure(geometry.width))||!Number.isFinite(crackMeasure(geometry.depth))}
      active={active} widthControl={dimensionButton('width')} depthControl={dimensionButton('depth')}/>:<>
     <p className="repair-caption">Mide la abertura y cuánto entra en el muro.</p>
     <div className="repair-detail">
@@ -132,8 +153,10 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
    </section>
   </div>
   <div className="repair-crack-footer">
-   <p>Volumen de {item} {index+1} <strong>{volume===undefined?'Pendiente':`${formatVolume(volume)} L`}</strong></p>
-   {removable&&<button type="button" className="text-button remove" onClick={onRemove}>Eliminar {item} {index+1}</button>}
+   <p className="measurement-edit-total"><span>Volumen de {item} {index+1}</span> <strong>{volume===undefined?'Pendiente':`${formatVolume(volume)} L`}</strong></p>
+   {!draft&&removable&&<button type="button" className="text-button remove" onClick={onRemove}>Eliminar {item} {index+1}</button>}
+  </div>
+  {draft&&<MeasurementActions onFinish={editor.finish}/>}
   </div>
  </section>;
 }

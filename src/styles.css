@@ -425,13 +425,13 @@ footer span { display: block; margin-top: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { .cement-motion { transition: none; } }
 
-.roof-fields [data-next=true] { color: var(--lime); }
-.roof-fields [data-next=true] input { border-color: var(--lime); }
+.roof-fields [data-next=true], .seal-measurements [data-next=true] { color: var(--lime); }
+.roof-fields [data-next=true] input, .seal-measurements [data-next=true] input { border-color: var(--lime); }
 .roof-next-label { display: inline; margin-inline-start: 6px; color: inherit; }
 
-#root:has(.roof-editing) :is(.site-header, .mobile-nav, .skip-link) { display: none; }
-#root:has(.roof-editing) main { visibility: hidden; overflow: hidden; }
-.roof-surface.roof-editing {
+#root:has(.measurement-editing) :is(.site-header, .mobile-nav, .skip-link) { display: none; }
+#root:has(.measurement-editing) main { visibility: hidden; overflow: hidden; }
+.measurement-editing.measurement-editing {
  position: fixed;
  inset: var(--viewport-top, 0px) 0 auto;
  z-index: 5;
@@ -447,7 +447,7 @@ footer span { display: block; margin-top: 3px; }
  container-type: size;
 }
 .roof-editing > legend { display: none; }
-.roof-editing .roof-surface-content {
+.measurement-editing .measurement-edit-content {
  display: grid;
  grid-template-rows: minmax(28px, 1fr) auto auto auto;
  align-items: center;
@@ -478,11 +478,11 @@ footer span { display: block; margin-top: 3px; }
 .roof-editing .roof-fields label { font-size: 13px; }
 .roof-editing .roof-fields input { height: 44px; margin-top: 3px; font-size: 16px; scroll-margin: 0; }
 .roof-editing .roof-fields small { margin-top: 2px; }
-.roof-editing .roof-surface-area { margin: 0; padding: 0; border: 0; font-size: 13px; }
-.roof-edit-actions { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; }
-.roof-edit-actions button { min-height: 44px; padding: 5px; font-size: 14px; }
+:is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) { margin: 0; padding: 0; border: 0; font-size: 13px; }
+.measurement-edit-actions { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; }
+.measurement-edit-actions button { min-height: 44px; padding: 5px; font-size: 14px; }
 @container (max-height: 230px) {
- .roof-editing .roof-surface-content { padding-block: 4px; gap: 2px; }
+ .measurement-editing .measurement-edit-content { padding-block: 4px; gap: 2px; }
  .roof-editing .roof-diagram { max-height: 62px; }
 }
 @container (max-height: 230px) {
@@ -491,7 +491,25 @@ footer span { display: block; margin-top: 3px; }
  .roof-editing .roof-fields .error { grid-column: 1 / -1; }
 }
 @container (max-height: 170px) {
- .roof-editing .roof-surface-content { grid-template-rows: minmax(24px, 1fr) auto auto; }
- .roof-editing .roof-surface-area { position: absolute; top: 5px; left: 12px; }
- .roof-editing .roof-surface-area > span { position: absolute; clip-path: inset(50%); }
+ .measurement-editing .measurement-edit-content { grid-template-rows: minmax(24px, 1fr) auto auto; }
+ :is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) { position: absolute; top: 5px; left: 12px; }
+ :is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) > span { position: absolute; clip-path: inset(50%); }
+}
+
+.seal-editing :is(.repair-panels, .repair-panel, .repair-detail-fields, .repair-crack-footer) { display: contents; }
+.seal-editing :is(.repair-panel > h2, .repair-panel > h3, .repair-caption, .repair-figure-note, .seal-color-key, .seal-material, [hidden]),
+.seal-editing[data-edit-dimension=length] .seal-cut-panel,
+.seal-editing:not([data-edit-dimension=length]) .seal-length-panel { display: none; }
+.seal-editing :is(.seal-span, .seal-cut) { width: 100%; height: 100%; max-height: 185px; margin: 0 auto; }
+.seal-editing :is(.seal-span, .seal-cut) > svg { height: 100%; }
+.seal-editing .seal-cut > svg { max-width: 340px; margin-inline: auto; }
+.seal-editing .roof-edit-gauge { right: 0; top: 25%; max-width: 48%; }
+.seal-editing .repair-field input { height: 44px; font-size: 16px; scroll-margin: 0; }
+.seal-editing .repair-field small { margin-top: 2px; }
+.seal-editing .measurement-edit-total { display: flex; justify-content: space-between; gap: 8px; }
+@container (max-height: 230px) {
+ .seal-editing :is(.seal-span, .seal-cut) { max-height: 62px; }
+ .seal-editing .repair-field:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; }
+ .seal-editing .repair-field label { max-width: 110px; margin: 0; }
+ .seal-editing .repair-field .error { grid-column: 1 / -1; }
 }

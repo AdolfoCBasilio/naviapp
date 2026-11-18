@@ -1,7 +1,7 @@
 import {useLayoutEffect,useRef,useState,type RefObject} from 'react';
 
 type Draft<Key>={key:Key;value:string;lastValid:string;error:boolean};
-const mobileEditor='(max-width: 799px), (pointer: coarse)';
+const prefersCompactEditor=()=>window.matchMedia?.('(max-width: 799px), (pointer: coarse)').matches;
 
 export function useMeasurementEditor<Key extends string>({
  card,values,parse,onChange,order,enabled=true,normalize=value=>value,
@@ -26,15 +26,17 @@ export function useMeasurementEditor<Key extends string>({
 
  function begin(key:Key){
   setFocus(key);
-  if(!enabled||editing||!window.matchMedia?.(mobileEditor).matches)return;
+  if(!enabled||editing||!prefersCompactEditor())return;
   scrollBeforeEdit.current=card.current?.closest('main')?.scrollTop??0;
   setNext(undefined);
   setDraft({key,value:values[key],lastValid:values[key],error:false});
  }
 
- function edit(key:Key){
-  inputs.current[key]?.focus({preventScroll:enabled});
-  inputs.current[key]?.select();
+ function edit(key:Key,scrollIntoView=false){
+  const input=inputs.current[key];
+  input?.focus({preventScroll:enabled});
+  input?.select();
+  if(scrollIntoView&&!prefersCompactEditor())input?.scrollIntoView?.({block:'nearest',inline:'nearest',behavior:'auto'});
  }
 
  function change(key:Key,value:string){

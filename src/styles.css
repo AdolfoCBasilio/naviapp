@@ -425,8 +425,8 @@ footer span { display: block; margin-top: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { .cement-motion { transition: none; } }
 
-.roof-fields [data-next=true], .seal-measurements [data-next=true] { color: var(--lime); }
-.roof-fields [data-next=true] input, .seal-measurements [data-next=true] input { border-color: var(--lime); }
+.roof-fields [data-next=true], .repair-measurements [data-next=true] { color: var(--lime); }
+.roof-fields [data-next=true] input, .repair-measurements [data-next=true] input { border-color: var(--lime); }
 .roof-next-label { display: inline; margin-inline-start: 6px; color: inherit; }
 
 #root:has(.measurement-editing) :is(.site-header, .mobile-nav, .skip-link) { display: none; }
@@ -478,7 +478,7 @@ footer span { display: block; margin-top: 3px; }
 .roof-editing .roof-fields label { font-size: 13px; }
 .roof-editing .roof-fields input { height: 44px; margin-top: 3px; font-size: 16px; scroll-margin: 0; }
 .roof-editing .roof-fields small { margin-top: 2px; }
-:is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) { margin: 0; padding: 0; border: 0; font-size: 13px; }
+:is(.roof-editing .roof-surface-area, .volume-editing .measurement-edit-total) { margin: 0; padding: 0; border: 0; font-size: 13px; }
 .measurement-edit-actions { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; }
 .measurement-edit-actions button { min-height: 44px; padding: 5px; font-size: 14px; }
 @container (max-height: 230px) {
@@ -492,24 +492,54 @@ footer span { display: block; margin-top: 3px; }
 }
 @container (max-height: 170px) {
  .measurement-editing .measurement-edit-content { grid-template-rows: minmax(24px, 1fr) auto auto; }
- :is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) { position: absolute; top: 5px; left: 12px; }
- :is(.roof-editing .roof-surface-area, .seal-editing .measurement-edit-total) > span { position: absolute; clip-path: inset(50%); }
+ :is(.roof-editing .roof-surface-area, .volume-editing .measurement-edit-total) { position: absolute; top: 5px; left: 12px; }
+ :is(.roof-editing .roof-surface-area, .volume-editing .measurement-edit-total) > span { position: absolute; clip-path: inset(50%); }
 }
 
-.seal-editing :is(.repair-panels, .repair-panel, .repair-detail-fields, .repair-crack-footer) { display: contents; }
-.seal-editing :is(.repair-panel > h2, .repair-panel > h3, .repair-caption, .repair-figure-note, .seal-color-key, .seal-material, [hidden]),
-.seal-editing[data-edit-dimension=length] .seal-cut-panel,
-.seal-editing:not([data-edit-dimension=length]) .seal-length-panel { display: none; }
-.seal-editing :is(.seal-span, .seal-cut) { width: 100%; height: 100%; max-height: 185px; margin: 0 auto; }
-.seal-editing :is(.seal-span, .seal-cut) > svg { height: 100%; }
-.seal-editing .seal-cut > svg { max-width: 340px; margin-inline: auto; }
-.seal-editing .roof-edit-gauge { right: 0; top: 25%; max-width: 48%; }
-.seal-editing .repair-field input { height: 44px; font-size: 16px; scroll-margin: 0; }
-.seal-editing .repair-field small { margin-top: 2px; }
-.seal-editing .measurement-edit-total { display: flex; justify-content: space-between; gap: 8px; }
+.volume-editing :is(.repair-panels, .repair-panel, .repair-detail-fields, .repair-crack-footer, .repair-detail) { display: contents; }
+.volume-editing :is(.repair-panel > h2, .repair-panel > h3, .repair-caption, .repair-figure-note, .seal-color-key, .seal-material, .repair-isometric, [hidden]),
+.volume-editing[data-edit-dimension=length] .volume-cut-panel,
+.volume-editing:not([data-edit-dimension=length]) .volume-length-panel { display: none; }
+.volume-editing :is(.seal-span, .seal-cut, .repair-length-art, .repair-cut) { width: 100%; height: 100%; max-height: 185px; margin: 0 auto; }
+.volume-editing :is(.seal-span, .seal-cut, .repair-length-art, .repair-cut) > svg { height: 100%; }
+.volume-editing :is(.seal-cut, .repair-cut) > svg { max-width: 340px; margin-inline: auto; }
+.volume-editing .repair-length-art { position: relative; display: block; min-height: 0; }
+.volume-editing .roof-edit-gauge { right: 0; top: 25%; max-width: 48%; }
+.volume-editing .repair-field input { height: 44px; font-size: 16px; scroll-margin: 0; }
+.volume-editing .repair-field small { margin-top: 2px; }
+.volume-editing .measurement-edit-total { display: flex; justify-content: space-between; gap: 8px; }
 @container (max-height: 230px) {
- .seal-editing :is(.seal-span, .seal-cut) { max-height: 62px; }
- .seal-editing .repair-field:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; }
- .seal-editing .repair-field label { max-width: 110px; margin: 0; }
- .seal-editing .repair-field .error { grid-column: 1 / -1; }
+ .volume-editing :is(.seal-span, .seal-cut, .repair-length-art, .repair-cut) { max-height: 62px; }
+ .volume-editing .repair-field:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; }
+ .volume-editing .repair-field label { max-width: 110px; margin: 0; }
+ .volume-editing .repair-field .error { grid-column: 1 / -1; }
+}
+
+@media (max-width: 799px) {
+ .repair-measurements .repair-crack:not(.volume-editing) .repair-detail-fields > .repair-field {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 5px;
+  align-items: start;
+ }
+ .repair-measurements .repair-crack:not(.volume-editing) .repair-detail-fields label {
+  margin: 0;
+  line-height: 1.35;
+ }
+ .repair-measurements .repair-detail-fields .roof-next-label {
+  margin: 0;
+  line-height: 1.35;
+ }
+ @supports not (grid-template-rows: subgrid) {
+  .repair-measurements .repair-crack:not(.volume-editing) .repair-detail-fields > .repair-field {
+   display: flex;
+   grid-row: auto;
+   align-items: stretch;
+  }
+  .repair-measurements .repair-crack:not(.volume-editing) .repair-detail-fields label {
+   flex: none;
+   min-height: 2.7em;
+  }
+ }
 }

@@ -25,7 +25,7 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
  const marker=useId();
  const card=useRef<HTMLElement>(null);
  const editor=useMeasurementEditor<CrackDimension>({
-  card,values:crack,parse:crackMeasure,enabled:seal,order:['length','width','depth'],
+  card,values:crack,parse:crackMeasure,order:['length','width','depth'],
   onChange:(key,value)=>onChange({...crack,[key]:value}),
  });
  const {draft,next,active}=editor;
@@ -45,7 +45,7 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
   const error=editing?(draft.error?`Ingresa ${key==='length'?'un largo':key==='width'?'un ancho':'una profundidad'} mayor que cero.`:undefined):errors[id];
   return <div className="repair-field" hidden={!!draft&&!editing} data-next={next===key}>
    <label htmlFor={id}>{label}<span className="sr-only"> · {itemTitle} {index+1}</span></label>
-   <input id={id} ref={element=>{if(element)editor.inputs.current[key]=element;}} inputMode="decimal" enterKeyHint={seal?'done':undefined}
+   <input id={id} ref={element=>{if(element)editor.inputs.current[key]=element;}} inputMode="decimal" enterKeyHint="done"
     value={preview[key]} onChange={event=>editor.change(key,event.target.value)}
     onFocus={()=>editor.begin(key)} onBlur={editor.blur}
     onKeyDown={event=>{
@@ -55,14 +55,14 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
      }
     }}
     aria-invalid={!!error} aria-describedby={error?`${id}-error`:next===key?`${id}-next`:undefined}/>
-   {next===key&&<small id={`${id}-next`} className="roof-next-label">Siguiente medida</small>}
+   {next===key&&!error&&<small id={`${id}-next`} className="roof-next-label">Siguiente medida</small>}
    {error&&<small className="error" id={`${id}-error`} role={editing?'alert':undefined}>{error}</small>}
   </div>;
  };
 
  const dimensionButton=(key:CrackDimension)=>{
   const {name,unit}=dimensions[key];
-  const value=!seal||Number.isFinite(crackMeasure(preview[key]))?preview[key].trim():'';
+  const value=(!seal&&!draft)||Number.isFinite(crackMeasure(preview[key]))?preview[key].trim():'';
   const text=`${name} ${value||'—'} ${unit}`;
   if(draft)return active===key?<span className="roof-edit-gauge">{text}</span>:null;
   return <button type="button" className={`repair-dimension repair-dimension-${key}`}
@@ -76,12 +76,12 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
  let volume:number|undefined;
  try {volume=crackVolume(preview);} catch { /* Las medidas siguen pendientes. */ }
 
- return <section ref={card} tabIndex={seal?-1:undefined} className={`repair-crack${draft?' measurement-editing seal-editing':''}`}
+ return <section ref={card} tabIndex={-1} className={`repair-crack${draft?' measurement-editing volume-editing':''}`}
   role={draft?'dialog':undefined} aria-modal={draft?true:undefined}
-  aria-label={draft?`Editar tramo ${index+1}`:undefined} aria-labelledby={draft?undefined:labelId} data-edit-dimension={draft?.key}>
+  aria-label={draft?`Editar ${item} ${index+1}`:undefined} aria-labelledby={draft?undefined:labelId} data-edit-dimension={draft?.key}>
   <div className="measurement-edit-content">
   <div className="repair-panels">
-   <section className="repair-panel seal-length-panel">
+   <section className="repair-panel volume-length-panel">
     <h2><span>1.</span> {seal?'Mide el tramo':'Mide tu grieta'}</h2>
     <p className="repair-caption">{seal?'Mide la longitud que vas a rellenar':'Mide el hueco que vas a rellenar'}</p>
     <h3 id={labelId}>{itemTitle} {index+1}</h3>
@@ -110,7 +110,7 @@ function VolumeItem({crack, index, errors, removable, seal, onChange, onRemove}:
     {!seal&&<p className="repair-figure-note">Toca una medida para editarla</p>}
     {field('length')}
    </section>
-   <section className="repair-panel seal-cut-panel">
+   <section className="repair-panel volume-cut-panel">
     <h2><span>2.</span> Ancho y profundidad</h2>
     {seal?<SealCut width={visualSize(geometry.width,28,96,10)} depth={visualSize(geometry.depth,19,66,8)}
      pending={!Number.isFinite(crackMeasure(geometry.width))||!Number.isFinite(crackMeasure(geometry.depth))}

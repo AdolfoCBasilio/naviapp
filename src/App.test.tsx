@@ -333,6 +333,51 @@ describe('Navegación y cotización',()=>{
   expect(screen.getByRole('heading',{name:'¿Cuánto mide tu azotea?'})).toBeVisible();
   expect(screen.queryByText('2 cubetas completas')).not.toBeInTheDocument();
  });
+ it('confirma o cancela medidas en el editor móvil sin mezclar superficies',async()=>{
+  vi.stubGlobal('matchMedia',(query:string)=>({
+   matches:query.includes('pointer: coarse')||query.includes('prefers-reduced-motion'),
+   addEventListener:vi.fn(),removeEventListener:vi.fn(),
+  }));
+  try{
+   const user=userEvent.setup();render(<App/>);await openCard(user,'siete');
+   const dialog=()=>screen.getByRole('dialog',{name:'Editar superficie 1'});
+   await user.click(screen.getByRole('button',{name:'Largo — m'}));
+   const length=within(dialog()).getByRole('textbox',{name:'Largo de superficie 1 (m)'});
+   expect(length).toHaveFocus();
+   expect(length).toHaveAttribute('inputmode','decimal');
+   await user.type(length,'10');
+   expect(within(dialog()).getByText('Largo 10 m')).toBeVisible();
+   await user.click(within(dialog()).getByRole('button',{name:'Aceptar medida'}));
+   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+   expect(length).toHaveValue('10');
+   expect(screen.getByText('Ancho (m)').closest('label')).toHaveAttribute('data-next','true');
+   const width=screen.getByLabelText('Ancho de superficie 1 (m)');
+   await user.type(width,'8');
+   expect(within(dialog()).getByText('Ancho 8 m')).toBeVisible();
+   expect(within(dialog()).getByText('80 m²')).toBeVisible();
+   expect(within(screen.getByRole('complementary',{name:'Resumen de tu azotea'})).getByText('Pendiente')).toBeInTheDocument();
+   await user.tab();
+   expect(within(dialog()).getByRole('button',{name:'Cancelar'})).toHaveFocus();
+   await user.click(within(dialog()).getByRole('button',{name:'Aceptar medida'}));
+   expect(within(screen.getByRole('complementary',{name:'Resumen de tu azotea'})).getByText('80 m²')).toBeVisible();
+   await user.click(screen.getByRole('button',{name:/Agregar superficie/}));
+   const second=screen.getByRole('group',{name:'Superficie 2'});
+   await user.click(within(second).getByRole('button',{name:'Ya sé los m²'}));
+   await user.type(screen.getByLabelText('Área de superficie 2 (m²)'),'2,5');
+   const secondDialog=screen.getByRole('dialog',{name:'Editar superficie 2'});
+   expect(within(secondDialog).getByText('2.5 m²')).toBeVisible();
+   await user.click(within(secondDialog).getByRole('button',{name:'Aceptar medida'}));
+   expect(screen.getByLabelText('Área de superficie 2 (m²)')).toHaveValue('2,5');
+   await user.clear(width);
+   await user.type(width,'8,');
+   expect(within(dialog()).getByText('Pendiente')).toBeVisible();
+   await user.click(within(dialog()).getByRole('button',{name:'Aceptar medida'}));
+   expect(within(dialog()).getByRole('alert')).toHaveTextContent('Ingresa un ancho mayor que cero.');
+   await user.click(within(dialog()).getByRole('button',{name:'Cancelar'}));
+   expect(width).toHaveValue('8');
+   expect(screen.getByLabelText('Área de superficie 2 (m²)')).toHaveValue('2,5');
+  }finally{vi.unstubAllGlobals();}
+ });
  it('el rendimiento automático de 5 años no se hereda a otros productos',async()=>{
   const user=userEvent.setup();render(<App/>);await openCard(user,'cinco');await user.click(screen.getByRole('button',{name:'Cambiar'}));await user.selectOptions(screen.getByLabelText('¿Qué quieres hacer?'),'block');await user.click(screen.getByRole('button',{name:/Adeblok Constructor Cemix/}));expect(screen.queryByText('19 m² por cubeta de 19 L · 2 manos')).not.toBeInTheDocument();expect(screen.getByRole('button',{name:'4 mm'})).toHaveAttribute('aria-pressed','false');
  });

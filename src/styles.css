@@ -399,7 +399,7 @@ footer span { display: block; margin-top: 3px; }
 }
 .base-cement-form .roof-measurements h2, .base-cement-panel h2 { margin: 0 0 10px; font-size: 18px; font-weight: 750; }
 .base-cement-form .roof-surface { padding: 0; border: 0; border-radius: 0; background: transparent; }
-.base-cement-form .roof-surface + .roof-surface { padding-top: 12px; border-top: 1px solid #465247; }
+.base-cement-form .roof-surface + .roof-surface:not(.roof-editing) { padding-top: 12px; border-top: 1px solid #465247; }
 .base-cement-form .roof-surface legend { padding: 0 0 5px; font-size: 13px; }
 .base-cement-panel label { margin-bottom: 12px; font-size: 13px; }
 .base-cement-panel .thickness legend { font-size: 15px; margin-bottom: 8px; }
@@ -424,3 +424,74 @@ footer span { display: block; margin-top: 3px; }
  .base-cement-review .calculate { margin-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .cement-motion { transition: none; } }
+
+.roof-fields [data-next=true] { color: var(--lime); }
+.roof-fields [data-next=true] input { border-color: var(--lime); }
+.roof-next-label { display: inline; margin-inline-start: 6px; color: inherit; }
+
+#root:has(.roof-editing) :is(.site-header, .mobile-nav, .skip-link) { display: none; }
+#root:has(.roof-editing) main { visibility: hidden; overflow: hidden; }
+.roof-surface.roof-editing {
+ position: fixed;
+ inset: var(--viewport-top, 0px) 0 auto;
+ z-index: 5;
+ width: 100%;
+ max-width: none;
+ height: var(--app-height, 100dvh);
+ margin: 0;
+ padding: 0;
+ border: 0;
+ border-radius: 0;
+ background: #202822;
+ visibility: visible;
+ container-type: size;
+}
+.roof-editing > legend { display: none; }
+.roof-editing .roof-surface-content {
+ display: grid;
+ grid-template-rows: minmax(28px, 1fr) auto auto auto;
+ align-items: center;
+ gap: 5px;
+ height: 100%;
+ max-width: 520px;
+ margin-inline: auto;
+ padding: 6px max(12px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.roof-editing :is(.segmented, figcaption, label[hidden]) { display: none; }
+.roof-editing .roof-diagram { width: 100%; height: 100%; max-height: 185px; margin: 0; }
+.roof-editing .roof-scene, .roof-editing .roof-scene svg { height: 100%; width: 100%; }
+.roof-edit-gauge {
+ position: absolute;
+ top: 50%;
+ right: 0;
+ transform: translateY(-50%);
+ max-width: 38%;
+ padding: 3px 7px;
+ border-radius: 8px;
+ background: var(--lime);
+ color: #152010;
+ font-size: 13px;
+ line-height: 1.2;
+ font-weight: 750;
+ overflow-wrap: anywhere;
+}
+.roof-editing .roof-fields label { font-size: 13px; }
+.roof-editing .roof-fields input { height: 44px; margin-top: 3px; font-size: 16px; scroll-margin: 0; }
+.roof-editing .roof-fields small { margin-top: 2px; }
+.roof-editing .roof-surface-area { margin: 0; padding: 0; border: 0; font-size: 13px; }
+.roof-edit-actions { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; }
+.roof-edit-actions button { min-height: 44px; padding: 5px; font-size: 14px; }
+@container (max-height: 230px) {
+ .roof-editing .roof-surface-content { padding-block: 4px; gap: 2px; }
+ .roof-editing .roof-diagram { max-height: 62px; }
+}
+@container (max-height: 230px) {
+ .roof-editing .roof-fields label:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 9px; }
+ .roof-editing .roof-fields input { margin-top: 0; }
+ .roof-editing .roof-fields .error { grid-column: 1 / -1; }
+}
+@container (max-height: 170px) {
+ .roof-editing .roof-surface-content { grid-template-rows: minmax(24px, 1fr) auto auto; }
+ .roof-editing .roof-surface-area { position: absolute; top: 5px; left: 12px; }
+ .roof-editing .roof-surface-area > span { position: absolute; clip-path: inset(50%); }
+}

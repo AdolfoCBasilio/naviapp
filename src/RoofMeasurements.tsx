@@ -1,4 +1,4 @@
-import {useRef,useState} from 'react';
+import {useLayoutEffect,useRef,useState} from 'react';
 import {positive} from './calculate';
 import type {Product} from './catalog';
 import {RoofDiagram,type RoofAxis} from './RoofDiagram';
@@ -7,48 +7,115 @@ import {blankSurface,completeSurfaceArea,surfaceArea,type Surface} from './surfa
 const areaText=(area:number)=>area.toLocaleString('es-MX',{maximumSignificantDigits:8});
 type MeasurementsProps={surfaces:Surface[];errors:Record<string,string>;onChange:(surfaces:Surface[])=>void};
 
+type RoofField=RoofAxis|'area';
+type Draft={key:RoofField;value:string;lastValid:number;error:boolean};
+const fieldNames={length:'Largo',side:'Ancho',area:'Área'};
+const normalizeDraft=(value:string)=>value.trim().replace(/^[.,]/,'0$&');
+
 function RoofSurface({surface,index,errors,onChange,onRemove}:{
  surface:Surface;index:number;errors:MeasurementsProps['errors'];onChange:(surface:Surface)=>void;onRemove?:()=>void;
 }){
- const inputs=useRef<Partial<Record<RoofAxis,HTMLInputElement>>>({});
+ const inputs=useRef<Partial<Record<RoofField,HTMLInputElement>>>({});
+ const card=useRef<HTMLFieldSetElement>(null);
+ const scrollBeforeEdit=useRef<number|null>(null);
  const [active,setActive]=useState<RoofAxis>();
+ const [next,setNext]=useState<RoofAxis>();
+ const [draft,setDraft]=useState<Draft>();
  const number=index+1;
  const direct=surface.mode==='area';
- const length=positive(surface.length),width=positive(surface.side);
- const area=surfaceArea(surface);
+ const confirmedValue=draft?normalizeDraft(draft.value):'';
+ const validDraft=positive(confirmedValue);
+ const preview=draft?{...surface,[draft.key]:confirmedValue}:surface;
+ const area=surfaceArea(preview);
+ const length=draft?.key==='length'?draft.lastValid:positive(surface.length);
+ const width=draft?.key==='side'?draft.lastValid:positive(surface.side);
  const fieldIds={length:`${surface.id}-length`,side:`${surface.id}-side`};
+
+ useLayoutEffect(()=>{
+  if(draft||scrollBeforeEdit.current===null)return;
+  const scroll=card.current?.closest('main');
+  if(scroll)scroll.scrollTop=scrollBeforeEdit.current;
+  scrollBeforeEdit.current=null;
+  card.current?.focus({preventScroll:true});
+ },[draft]);
+
+ const begin=(key:RoofField)=>{
+  setActive(key==='area'?undefined:key);
+  if(draft||!window.matchMedia?.('(max-width: 799px), (pointer: coarse)').matches)return;
+  scrollBeforeEdit.current=card.current?.closest('main')?.scrollTop??0;
+  setNext(undefined);
+  setDraft({key,value:surface[key],lastValid:positive(surface[key]),error:false});
+ };
  const edit=(axis:RoofAxis)=>{
-  inputs.current[axis]?.focus();
+  inputs.current[axis]?.focus({preventScroll:true});
   inputs.current[axis]?.select();
  };
- const field=(key:RoofAxis|'area',label:string,accessibleLabel:string)=>{
+ const finish=(accept:boolean)=>{
+  if(!draft)return;
+  if(accept&&!Number.isFinite(validDraft)){
+   setDraft({...draft,error:true});
+   return;
+  }
+  inputs.current[draft.key]?.blur();
+  setActive(undefined);
+  setDraft(undefined);
+  if(!accept)return;
+  if(draft.key!=='area'){
+   const other=draft.key==='length'?'side':'length';
+   setNext(Number.isFinite(positive(surface[other]))?undefined:other);
+  }
+  if(confirmedValue!==surface[draft.key])onChange(preview);
+ };
+
+ const field=(key:RoofField)=>{
+  const name=fieldNames[key],unit=key==='area'?'m²':'m';
   const id=`${surface.id}-${key}`;
-  const error=errors[`${index}-${key}`];
-  return <label htmlFor={id}>{label}<input id={id} value={surface[key]} inputMode="decimal"
-   aria-label={accessibleLabel} aria-invalid={!!error} aria-describedby={error?`${id}-error`:undefined}
-   ref={element=>{if(key!=='area'&&element)inputs.current[key]=element;}}
-   onFocus={()=>setActive(key==='area'?undefined:key)} onBlur={()=>setActive(undefined)}
-   onChange={event=>onChange({...surface,[key]:event.target.value})}/>
-   {error&&<small className="error" id={`${id}-error`}>{error}</small>}
+  const editing=draft?.key===key;
+  const error=editing?(draft.error?`Ingresa ${key==='area'?'un área':key==='length'?'un largo':'un ancho'} mayor que cero.`:undefined):errors[`${index}-${key}`];
+  return <label htmlFor={id} hidden={!!draft&&!editing} data-next={next===key}>
+   <span className="roof-field-label">{name} ({unit})</span>{next===key&&<small className="roof-next-label">Siguiente medida</small>}
+   <input id={id} value={editing?draft.value:surface[key]} inputMode="decimal" enterKeyHint="done"
+    aria-label={`${name} de superficie ${number} (${unit})`} aria-invalid={!!error}
+    aria-describedby={error?`${id}-error`:next===key?`${id}-next`:undefined}
+    ref={element=>{if(element)inputs.current[key]=element;}}
+    onFocus={()=>begin(key)} onBlur={()=>setActive(undefined)}
+    onKeyDown={event=>{
+     if(!editing)return;
+     if(event.key==='Enter'||event.key==='Escape'){event.preventDefault();finish(event.key==='Enter');}
+    }}
+    onChange={event=>{
+     const value=event.target.value;
+     if(editing){
+      const measure=positive(normalizeDraft(value));
+      setDraft({...draft,value,lastValid:Number.isFinite(measure)?measure:draft.lastValid,error:false});
+     }else onChange({...surface,[key]:value});
+    }}/>
+   {next===key&&<span className="sr-only" id={`${id}-next`}>Siguiente medida</span>}
+   {error&&<small className="error" id={`${id}-error`} role={editing?'alert':undefined}>{error}</small>}
   </label>;
  };
 
- return <fieldset className="roof-surface">
+ return <fieldset ref={card} tabIndex={-1} className={`roof-surface${draft?' roof-editing':''}`}
+  role={draft?'dialog':undefined} aria-modal={draft?true:undefined} aria-label={draft?`Editar superficie ${number}`:undefined}>
   <legend>Superficie {number}</legend>
-  <div className="segmented" role="group" aria-label={`Forma de medir superficie ${number}`}>
-   <button type="button" aria-pressed={!direct} onClick={()=>{if(direct)onChange({...surface,mode:'dimensions'});}}>Largo × ancho</button>
-   <button type="button" aria-pressed={direct} onClick={()=>{if(!direct)onChange({...surface,mode:'area'});}}>Ya sé los m²</button>
+  <div className="roof-surface-content">
+   <div className="segmented" role="group" aria-label={`Forma de medir superficie ${number}`}>
+    <button type="button" aria-pressed={!direct} onClick={()=>{if(direct){setNext(undefined);onChange({...surface,mode:'dimensions'});}}}>Largo × ancho</button>
+    <button type="button" aria-pressed={direct} onClick={()=>{if(!direct){setNext(undefined);onChange({...surface,mode:'area'});}}}>Ya sé los m²</button>
+   </div>
+   <RoofDiagram direct={direct} directArea={direct?(area??undefined):undefined} ready={area!==null}
+    active={draft?(draft.key==='area'?undefined:draft.key):(active??next)} onEdit={edit} fieldIds={fieldIds}
+    compact={!!draft} pendingAxis={draft&&draft.key!=='area'&&!Number.isFinite(validDraft)?draft.key:undefined}
+    length={!direct&&Number.isFinite(length)?length:undefined} width={!direct&&Number.isFinite(width)?width:undefined}/>
+   <div className="roof-fields">
+    {direct?field('area'):<>{field('length')}{field('side')}</>}
+   </div>
+   <p className="roof-surface-area"><span>Área de esta superficie</span> <strong>{area===null?'Pendiente':`${areaText(area)} m²`}</strong></p>
+   {draft?<div className="roof-edit-actions" onPointerDown={event=>event.preventDefault()}>
+    <button type="button" className="secondary" onClick={()=>finish(false)}>Cancelar</button>
+    <button type="button" className="primary" onClick={()=>finish(true)}>Aceptar medida</button>
+   </div>:onRemove&&<button type="button" className="text-button remove" onClick={onRemove}>Eliminar superficie {number}</button>}
   </div>
-  <RoofDiagram direct={direct} directArea={direct?(area??undefined):undefined} ready={area!==null} active={active} onEdit={edit} fieldIds={fieldIds}
-   length={!direct&&Number.isFinite(length)?length:undefined} width={!direct&&Number.isFinite(width)?width:undefined}/>
-  <div className="roof-fields">
-   {direct?field('area','Área (m²)',`Área de superficie ${number} (m²)`):<>
-    {field('length','Largo (m)',`Largo de superficie ${number} (m)`)}
-    {field('side','Ancho (m)',`Ancho de superficie ${number} (m)`)}
-   </>}
-  </div>
-  <p className="roof-surface-area">Área de esta superficie <strong>{area===null?'Pendiente':`${areaText(area)} m²`}</strong></p>
-  {onRemove&&<button type="button" className="text-button remove" onClick={onRemove}>Eliminar superficie {number}</button>}
  </fieldset>;
 }
 

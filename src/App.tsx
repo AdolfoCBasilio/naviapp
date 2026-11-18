@@ -70,13 +70,20 @@ export default function App(){
  },[view]);
  useEffect(()=>{
   const viewport=window.visualViewport;
-  if(!viewport)return;
   const resize=()=>{
-   document.documentElement.style.setProperty('--app-height',`${viewport.height}px`);
-   document.documentElement.style.setProperty('--viewport-top',`${viewport.offsetTop}px`);
+   document.documentElement.style.setProperty('--app-height',`${viewport?.height??window.innerHeight}px`);
+   document.documentElement.style.setProperty('--viewport-top',`${viewport?.offsetTop??0}px`);
   };
-  resize();viewport.addEventListener('resize',resize);viewport.addEventListener('scroll',resize);
-  return()=>{viewport.removeEventListener('resize',resize);viewport.removeEventListener('scroll',resize);document.documentElement.style.removeProperty('--app-height');document.documentElement.style.removeProperty('--viewport-top');};
+  const sizeTarget=viewport??window;
+  resize();
+  sizeTarget.addEventListener('resize',resize);
+  viewport?.addEventListener('scroll',resize);
+  return()=>{
+   sizeTarget.removeEventListener('resize',resize);
+   viewport?.removeEventListener('scroll',resize);
+   document.documentElement.style.removeProperty('--app-height');
+   document.documentElement.style.removeProperty('--viewport-top');
+  };
  },[]);
  useEffect(()=>{if(changing)workSelect.current?.focus();},[changing]);
  useLayoutEffect(()=>{if(view==='cotizador'&&product&&!changing){content.current?.scrollTo({top:0,behavior:'instant'});heading.current?.focus({preventScroll:true});}},[view,productId,changing]);

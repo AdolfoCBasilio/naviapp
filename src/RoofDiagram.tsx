@@ -19,11 +19,11 @@ function animate(duration:number, update:(progress:number)=>void){
 }
 
 // Enlarge either axis at the same scale until the drawing reaches the viewport bounds.
-function fitRoof(length:number,width:number):Size {
+function fitRoof(length:number,width:number,compact:boolean):Size {
  const extent=Math.max(length,width,12);
  length=length/extent*12;
  width=width/extent*12;
- const scale=Math.min(31,350/(length+.48*width),104/(.62*width));
+ const scale=Math.min(compact?18:31,350/(length+.48*width),104/(.62*width));
  return {length:length*scale,width:width*scale};
 }
 
@@ -32,9 +32,9 @@ function roofProjection({length,width}:Size){
  return (x:number,y:number,z=0):Point=>[left+x+.48*y,172-.62*y-z];
 }
 
-function useRoofMotion(length:number,width:number,ready:boolean,directArea?:number){
+function useRoofMotion(length:number,width:number,ready:boolean,compact:boolean,directArea?:number){
  const [reduced,setReduced]=useState(()=>window.matchMedia?.(motionQuery).matches??false);
- const [size,setSize]=useState(()=>fitRoof(length,width));
+ const [size,setSize]=useState(()=>fitRoof(length,width,compact));
  const latestSize=useRef(size);
  const [paint,setPaint]=useState(0);
 
@@ -46,7 +46,7 @@ function useRoofMotion(length:number,width:number,ready:boolean,directArea?:numb
  },[]);
  useEffect(()=>{
   const from=latestSize.current;
-  const to=fitRoof(length,width);
+  const to=fitRoof(length,width,compact);
   const update=(progress:number)=>{
    const eased=1-(1-progress)**3;
    const next={length:from.length+(to.length-from.length)*eased,width:from.width+(to.width-from.width)*eased};
@@ -55,24 +55,24 @@ function useRoofMotion(length:number,width:number,ready:boolean,directArea?:numb
   };
   if(reduced){update(1);return;}
   if(from.length===to.length&&from.width===to.width)return;
-  return animate(300,update);
- },[length,width,reduced]);
+  return animate(compact?180:300,update);
+ },[length,width,reduced,compact]);
  useEffect(()=>{
   setPaint(ready&&reduced?1:0);
-  if(!ready||reduced)return;
+  if(!ready||reduced||compact)return;
   let stop:(()=>void)|undefined;
   const timer=window.setTimeout(()=>{stop=animate(950,setPaint);},350);
   return ()=>{window.clearTimeout(timer);stop?.();};
- },[length,width,ready,directArea,reduced]);
- return {size,paint:ready?(reduced?1:paint):0};
+ },[length,width,ready,directArea,reduced,compact]);
+ return {size,paint:compact?1:ready?(reduced?1:paint):0};
 }
 
-export function RoofDiagram({length,width,direct,directArea,ready,active,onEdit,fieldIds}:{
- length?:number; width?:number; direct:boolean; directArea?:number; ready:boolean; active?:RoofAxis;
+export function RoofDiagram({length,width,direct,directArea,ready,active,onEdit,fieldIds,compact=false,pendingAxis}:{
+ length?:number; width?:number; direct:boolean; directArea?:number; ready:boolean; active?:RoofAxis; compact?:boolean; pendingAxis?:RoofAxis;
  onEdit:(axis:RoofAxis)=>void; fieldIds:Record<RoofAxis,string>;
 }){
  const id=useId();
- const {size,paint}=useRoofMotion(length??neutral.length,width??neutral.width,ready,directArea);
+ const {size,paint}=useRoofMotion(length??neutral.length,width??neutral.width,ready,compact,directArea);
  const project=roofProjection(size);
  const l=size.length,w=size.width;
  const roof=(end=l)=>coordinates([project(0,0),project(end,0),project(end,w),project(0,w)]);
@@ -135,13 +135,17 @@ export function RoofDiagram({length,width,direct,directArea,ready,active,onEdit,
      </g>;
     })}
    </svg>
-   {!direct&&gauges.map(({key,label,value})=><button key={key} type="button"
-    className={`roof-cota roof-cota-${key}`} data-active={active===key}
-    style={key==='length'?{left:`${Math.max(24,Math.min(72,(left+l/2)/4.4))}%`}:undefined}
-    aria-controls={fieldIds[key]} onClick={()=>onEdit(key)}>
-    <span>{label} {value===undefined?'—':value.toLocaleString('es-MX',{maximumSignificantDigits:6})} m</span>
-    <span aria-hidden="true">✎</span>
-   </button>)}
+   {!direct&&gauges.map(({key,label,value})=>{
+    const text=`${label} ${value===undefined||pendingAxis===key?'—':value.toLocaleString('es-MX',{maximumSignificantDigits:6})} m`;
+    if(compact)return active===key?<span key={key} className="roof-edit-gauge">{text}</span>:null;
+    return <button key={key} type="button"
+     className={`roof-cota roof-cota-${key}`} data-active={active===key}
+     style={key==='length'?{left:`${Math.max(24,Math.min(72,(left+l/2)/4.4))}%`}:undefined}
+     aria-controls={fieldIds[key]} onClick={()=>onEdit(key)}>
+     <span>{text}</span>
+     <span aria-hidden="true">✎</span>
+    </button>;
+   })}
   </div>
   <figcaption>Vista ilustrativa del área a impermeabilizar<span>La animación no representa avance de obra</span></figcaption>
  </figure>;

@@ -1,5 +1,6 @@
 import {type MouseEvent,type Ref} from 'react';
 import {BrandLogo} from './BrandLogo';
+import {mapsUrl,whatsappUrl} from './contact';
 
 const entries=[
  {section:'catalogo',label:'Ver catálogo',description:'Explora productos, presentaciones y precios.'},
@@ -57,12 +58,12 @@ export function Welcome({contentRef,headingRef,onNavigate}:{
     </nav>
    </div>
    <footer className="welcome-contact">
-    <a href="https://maps.app.goo.gl/ahz15b6kWgyagmPd6" target="_blank" rel="noopener noreferrer">
+    <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M16 8c0 4-6 8.5-6 8.5S4 12 4 8a6 6 0 1 1 12 0Z"/><circle cx="10" cy="8" r="2"/></svg>
      <span><strong>Martínez de la Torre, Veracruz</strong><small>Cómo llegar en Google Maps</small></span>
      <ExternalArrow/>
     </a>
-    <a href="https://wa.me/522321749491" target="_blank" rel="noopener noreferrer">
+    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M4.1 14.2 3 17l3.1-.9a7 7 0 1 0-2-1.9Z"/>
       <path d="M7.7 6.5c-.6 0-1 .6-.9 1.4.3 2.1 2.7 4.4 4.8 4.8.8.1 1.4-.3 1.5-.9l-1.8-1-1 1c-1.1-.6-1.9-1.4-2.5-2.5l.9-1Z"/>

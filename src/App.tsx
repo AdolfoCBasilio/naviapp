@@ -4,6 +4,10 @@ import {estimate,estimateVolume,money,positive} from './calculate';
 import {ProductMedia} from './ProductMedia';
 import {BrandLogo} from './BrandLogo';
 import {Welcome} from './Welcome';
+import {HeaderContact} from './HeaderContact';
+import {EstimateResult} from './EstimateResult';
+import {coverageDisplay,format,capturedMeasure,quantityLabel,theoreticalNote,type QuoteResult} from './quoteResult';
+import {WorkPicker} from './WorkPicker';
 import {BaseCementApplication,BaseCementReview} from './BaseCementQuote';
 import {RoofMeasurements,RoofReview} from './RoofMeasurements';
 import {FloorMeasurements} from './FloorMeasurements';
@@ -14,7 +18,6 @@ import {blankSurface as blank,surfaceArea,type Surface} from './surfaces';
 import {VolumeMeasurements} from './RepairMeasurements';
 import {blankCrack,volumeReference,crackFieldId,crackMeasure,crackVolume,formatVolume,type Crack} from './CrackMeasurements';
 
-const works=[['block','Dar acabado a un muro de block'],['concreto','Recubrir concreto liso'],['piso','Nivelar un piso o losa'],['azotea','Impermeabilizar una azotea'],['resanes','Resanar grietas'],['sellados','Hacer sellados puntuales'],['otros','Otros acabados']];
 type View='inicio'|'catalogo'|'cotizador'|'estimado';
 function viewFromLocation(hasResult=false):View {
  switch(window.location.hash){
@@ -24,13 +27,8 @@ function viewFromLocation(hasResult=false):View {
   default: return 'inicio';
  }
 }
-type BaseApplication={label:string;coats:number;water:string;note:string;tableCoverage:number};
-type Result={productId:string;quantity:number;price?:number;total?:number;thickness:string;coverage:number;summary:string;theoretical:boolean;application?:BaseApplication}&({kind:'area';area:number}|{kind:'cracks';volumeLitres:number;cracks:Crack[]});
-const theoreticalNote='Cálculo teórico no validado por Cemix. Espesor fuera del rango de aplicación de 10–50 mm indicado por el fabricante. Este cálculo de consumo no confirma la aptitud del producto para capas delgadas; consulta a Cemix antes de aplicarlo.';
-const coverageDisplay=(n:number,productId:string)=>n.toFixed(['mortero','diez'].includes(productId)?2:1);
-const format=(n:number)=>n.toLocaleString('es-MX',{maximumFractionDigits:3});
 const getRoofCoverage=(product?:Product)=>product?.work==='azotea'?product.areaCoverage:undefined;
-const quantityLabel=(quantity:number,unit:string,plural:string)=>`${quantity} ${quantity===1?unit:plural} ${unit==='bulto'?(quantity===1?'completo':'completos'):(quantity===1?'completa':'completas')}`;
+
 
 export default function App(){
  const [view,setView]=useState<View>(()=>viewFromLocation());
@@ -43,11 +41,13 @@ export default function App(){
  const [baseUse,setBaseUse]=useState<BaseCementoUse>('membrane');
  const [morteroMode,setMorteroMode]=useState<'cemix'|'theoretical'>('cemix');
  const [errors,setErrors]=useState<Record<string,string>>({});
- const [result,setResult]=useState<Result|null>(null),[copyStatus,setCopyStatus]=useState('');
- const content=useRef<HTMLElement>(null),workSelect=useRef<HTMLSelectElement>(null);
+ const [result,setResult]=useState<QuoteResult|null>(null);
+ const content=useRef<HTMLElement>(null);
  const catalogScroll=useRef(0),heading=useRef<HTMLHeadingElement>(null),form=useRef<HTMLFormElement>(null);
  const previousView=useRef<View>(view);
  const product=products.find(p=>p.id===productId);
+ const pickingProduct=view==='cotizador'&&(!product||changing);
+ const pickingWork=pickingProduct&&!work;
  const wallProduct=product?.category==='Muros y acabados';
  const floorProduct=product?.id==='mortero';
  const wallFlow=(wallProduct||floorProduct)&&view==='cotizador'&&!changing;
@@ -60,11 +60,11 @@ export default function App(){
  const baseFlow=roofFlow&&!!baseApplication;
  const baseThicknessLabel=baseApplication?.coats===1?'Espesor':'Espesor por mano';
  const productYields=baseApplication?baseApplication.yields:theoretical?morteroTheoreticalYields:product?thicknessYieldsByProduct[product.id]:undefined;
- const reset=()=>{setResult(null);setErrors({});setCopyStatus('');};
- const navigate=(next:Exclude<View,'inicio'>)=>{
+ const reset=()=>{setResult(null);setErrors({});};
+ const navigate=(next:View)=>{
   if(view==='catalogo')catalogScroll.current=content.current?.scrollTop ?? 0;
   if(next===view)return;
-  window.history.pushState(null,'',`#${next}`);setView(next);
+  window.history.pushState(null,'',next==='inicio'?'/':`#${next}`);setView(next);
  };
  useEffect(()=>{
   const sync=()=>{
@@ -96,7 +96,11 @@ export default function App(){
    document.documentElement.style.removeProperty('--viewport-top');
   };
  },[]);
- useEffect(()=>{if(changing)workSelect.current?.focus();},[changing]);
+ useLayoutEffect(()=>{
+  if(!pickingProduct)return;
+  content.current?.scrollTo({top:0,behavior:'instant'});
+  heading.current?.focus({preventScroll:true});
+ },[pickingProduct,work]);
  useLayoutEffect(()=>{if(view==='cotizador'&&product&&!changing){content.current?.scrollTo({top:0,behavior:'instant'});heading.current?.focus({preventScroll:true});}},[view,productId,changing]);
  useEffect(()=>{if(Object.keys(errors).length)form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();},[errors]);
  const choose=(id:string,fresh=false)=>{
@@ -128,9 +132,9 @@ export default function App(){
    setErrors(next);setResult(null);if(Object.keys(next).length)return;
    try{
     const calculated=estimateVolume(volume,product.volumeYieldLitres,product.price);
-    const dimensions=cracks.map((c,i)=>`${config.itemTitle} ${i+1}: ${format(crackMeasure(c.length))} m de largo × ${format(crackMeasure(c.width))} mm de ancho × ${format(crackMeasure(c.depth))} mm de profundidad`).join('\n');
-    const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\n${dimensions}\nVolumen estimado: ${formatVolume(volume)} L\n${config.referenceLabel}: ${product.volumeYieldLitres} L por ${config.container}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total por confirmar':'Total: '+money(calculated.total)}\n\n${config.note}`;
-    setResult({...calculated,kind:'cracks',productId,thickness:'',coverage:product.volumeYieldLitres,summary,theoretical:false,cracks:cracks.map(c=>({...c}))});setCopyStatus('');navigate('estimado');
+    const dimensions=cracks.map((c,i)=>`${config.itemTitle} ${i+1}: ${capturedMeasure(crackMeasure(c.length))} m de largo × ${capturedMeasure(crackMeasure(c.width))} mm de ancho × ${capturedMeasure(crackMeasure(c.depth))} mm de profundidad · ${formatVolume(crackVolume(c))} L`).join('\n');
+    const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\n${dimensions}\nVolumen estimado: ${formatVolume(volume)} L\n${config.referenceLabel}: ${product.volumeYieldLitres} L por ${config.container}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total: Consulta precio':'Total: '+money(calculated.total)}\n\n${config.note}`;
+    setResult({...calculated,kind:'cracks',productId,thickness:'',coverage:product.volumeYieldLitres,summary,theoretical:false,cracks:cracks.map(c=>({...c}))});navigate('estimado');
    }catch{setErrors({volume:'El volumen está fuera del rango de cálculo. Revisa las medidas.'});}
    return;
   }
@@ -145,13 +149,21 @@ export default function App(){
   setErrors(next);setResult(null);if(Object.keys(next).length)return;
   let calculated:ReturnType<typeof estimate>;
   try{calculated=estimate(area,yieldValue,product.price);}catch{setErrors({coverage:'Las medidas son demasiado grandes. Revisa las superficies y el rendimiento.'});return;}
-  const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\nÁrea: ${format(area)} m²${thickness?' · Espesor: '+thickness+' mm':''}\nRendimiento: ${baseApplication?`${tableYield} m² por bulto y mano\nUso: ${baseApplication.label}\nManos: ${baseApplication.coats}\nEspesor por mano: ${thickness} mm\nPreparación: ${baseApplication.water}\n${baseApplication.note}`:`${yieldValue} m² por envase`}${product.areaCoverage?`\nAplicación: ${product.areaCoverage.coats} manos (incluidas en el rendimiento)\n${product.areaCoverage.note}`:''}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total por confirmar':'Total: '+money(calculated.total)}${theoretical?'\n\n'+theoreticalNote+'\nBase: 1.33 m² a 10 mm por bulto de 25 kg. Rendimiento teórico = 1.33 × 10 ÷ espesor (mm).':''}`;
-  setResult({...calculated,kind:'area',productId,thickness,coverage:yieldValue,summary,theoretical,application:baseApplication?{label:baseApplication.label,coats:baseApplication.coats,water:baseApplication.water,note:baseApplication.note,tableCoverage:tableYield}:undefined});setCopyStatus('');navigate('estimado');
+  const dimensions=surfaces.map((surface,index)=>{
+   const name=wallProduct?'Muro':'Superficie';
+   const measured=`${capturedMeasure(surfaceArea(surface)!)} m²`;
+   if(surface.mode==='area')return `${name} ${index+1}: ${measured} (área directa)`;
+   return `${name} ${index+1}: ${capturedMeasure(positive(surface.length))} m de largo × ${capturedMeasure(positive(surface.side))} m de ${dimensionName} · ${measured}`;
+  }).join('\n');
+  const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\nÁrea: ${format(area)} m²${thickness?' · Espesor: '+thickness+' mm':''}\n${dimensions}\nRendimiento: ${baseApplication?`${tableYield} m² por bulto y mano\nUso: ${baseApplication.label}\nManos: ${baseApplication.coats}\nEspesor por mano: ${thickness} mm\nPreparación: ${baseApplication.water}\n${baseApplication.note}`:`${yieldValue} m² por envase`}${product.areaCoverage?`\nAplicación: ${product.areaCoverage.coats} manos (incluidas en el rendimiento)\n${product.areaCoverage.note}`:''}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total: Consulta precio':'Total: '+money(calculated.total)}${theoretical?'\n\n'+theoreticalNote+'\nBase: 1.33 m² a 10 mm por bulto de 25 kg. Rendimiento teórico = 1.33 × 10 ÷ espesor (mm).':''}`;
+  setResult({...calculated,kind:'area',productId,thickness,coverage:yieldValue,summary,theoretical,application:baseApplication?{label:baseApplication.label,coats:baseApplication.coats,water:baseApplication.water,note:baseApplication.note,tableCoverage:tableYield}:undefined});navigate('estimado');
  };
  const field=(i:number,key:'area'|'length'|'side',label:string)=><label htmlFor={`surface-${i}-${key}`}>{label}<input id={`surface-${i}-${key}`} aria-label={label} inputMode="decimal" value={surfaces[i][key]} placeholder="0" aria-invalid={!!errors[`${i}-${key}`]} aria-describedby={errors[`${i}-${key}`]?`error-${i}-${key}`:undefined} onChange={e=>update(i,key,e.target.value)}/>{errors[`${i}-${key}`]&&<small className="error" id={`error-${i}-${key}`}>{errors[`${i}-${key}`]}</small>}</label>;
  const yieldSelector=!product?null:productYields?<fieldset className="thickness" aria-describedby="coverage-help coverage-error"><legend>{wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'} <span>(mm)</span></legend><div className="thickness-options" style={{gridTemplateColumns:`repeat(${Math.min(5,Object.keys(productYields).length)}, minmax(0, 1fr))`}} role="group" aria-label={wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'}>{Object.keys(productYields).sort((a,b)=>Number(a)-Number(b)).map(mm=><button type="button" key={mm} aria-label={`${mm} mm`} aria-pressed={thickness===mm} aria-invalid={!!errors.coverage} onClick={()=>{setThickness(mm);reset();}}>{wallProduct||floorProduct?`${mm} mm`:mm}</button>)}</div><p id="coverage-help" className="muted">{thickness?`${coverageDisplay(productYields[thickness],product.id)} m² por ${product.presentation.toLowerCase()}${baseApplication?' y mano':''}`:`Elige un espesor para ver el rendimiento por ${product.presentation.toLowerCase()}.`}</p></fieldset>:product.areaCoverage?<aside className="coverage-reference" id="coverage-help"><h2>Rendimiento Cemix</h2><p><strong>{product.areaCoverage.m2PerContainer} m² por cubeta de 19 L · {product.areaCoverage.coats} manos</strong></p><p>{product.areaCoverage.note}</p></aside>:<label>Rendimiento de ficha técnica (m² por envase)<input aria-label="Rendimiento de ficha técnica (m² por envase)" value={coverage} inputMode="decimal" placeholder="Rendimiento confirmado" aria-invalid={!!errors.coverage} aria-describedby="coverage-help coverage-error" onChange={e=>{setCoverage(e.target.value);reset();}}/><small id="coverage-help">Consulta la ficha técnica para tu aplicación, espesor y número de manos. No tenemos un rendimiento confirmado para este producto.</small></label>;
  const visibleProducts=products.filter(p=>(category==='Todas'||p.category===category)&&p.name.toLocaleLowerCase('es-MX').includes(search.trim().toLocaleLowerCase('es-MX')));
  const resultProduct=result?products.find(p=>p.id===result.productId):undefined;
+ const showingEstimate=view==='estimado'&&!!result&&!!resultProduct;
+ const editEstimate=()=>{reset();navigate('cotizador');};
  if(view==='inicio')return <Welcome contentRef={content} headingRef={heading} onNavigate={section=>{
   if(section==='cotizador'){
    setProductId('');setWork('');setChanging(false);reset();
@@ -161,8 +173,13 @@ export default function App(){
  const tabs=<>{(['catalogo','cotizador'] as const).map(tab=><a key={tab} href={`#${tab}`} aria-current={(view==='catalogo'?tab==='catalogo':tab==='cotizador')?'page':undefined} onClick={e=>{e.preventDefault();navigate(tab);}}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">{tab==='catalogo'?<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></>:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h8"/></>}</svg>{tab==='catalogo'?'Catálogo':'Cotizador'}</a>)}</>;
  return <>
   <a className="skip-link" href="#contenido" onClick={event=>{event.preventDefault();heading.current?.focus();}}>Ir al contenido</a>
-  <header className="site-header"><div className="header-inner"><nav className="desktop-nav" aria-label="Navegación principal">{tabs}</nav><a className="brand" href="#catalogo" aria-label="NAVI · Ir al catálogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}><BrandLogo/></a></div></header>
-  <main ref={content} id="contenido" className={view==='catalogo'?'catalog-view':volumeFlow?'quote-view repair-quote-view':roofFlow?'quote-view roof-quote-view':wallFlow?`quote-view wall-quote-view${wallProduct?' animated-wall-view':''}`:'quote-view'}>
+  <header className={`site-header${pickingWork?' work-header':''}${showingEstimate?' estimate-header':''}`}><div className="header-inner"><div className="header-start">{pickingWork&&<a className="work-home-link" href="/" onClick={event=>{
+   if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+   event.preventDefault();navigate('inicio');
+  }}>← Inicio</a>}{showingEstimate?<button type="button" className="estimate-edit" onClick={editEstimate}>
+   <span aria-hidden="true">←</span> Editar medidas
+  </button>:<HeaderContact key={view}/>}</div><nav className="desktop-nav" aria-label="Navegación principal">{tabs}</nav><a className="brand" href="#catalogo" aria-label="NAVI · Ir al catálogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}><BrandLogo/></a></div></header>
+  <main ref={content} id="contenido" className={view==='catalogo'?'catalog-view':showingEstimate?'quote-view estimate-page':pickingWork?'quote-view work-view':volumeFlow?'quote-view repair-quote-view':roofFlow?'quote-view roof-quote-view':wallFlow?`quote-view wall-quote-view${wallProduct?' animated-wall-view':''}`:'quote-view'}>
    {view==='catalogo'?<>
     <div className="eyebrow">CATÁLOGO</div><h1 ref={heading} tabIndex={-1}>Materiales para tu obra</h1><p className="catalog-count">{visibleProducts.length} productos <span>· Precios en MXN</span></p>
     <div className="catalog-tools"><label className="search"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><span className="sr-only">Buscar por nombre</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar productos" type="search"/></label>
@@ -173,28 +190,15 @@ export default function App(){
     <div className="products">{visibleProducts.map(p=><article className="product" key={p.id} data-product-id={p.id}><ProductMedia product={p}/><div className="product-content"><h2>{p.name}</h2><p className="presentation">{p.presentation}</p><div className="product-footer"><strong>{p.price===undefined?'Consulta precio':money(p.price)}</strong>{p.quotable!==false&&<a className="quote-link" href="#cotizador" onClick={e=>{e.preventDefault();startQuote(p.id);}}>Cotizar</a>}</div></div></article>)}</div>
     {!visibleProducts.length&&<div className="empty-state" role="status"><h2>No encontramos productos</h2><p>Prueba otro nombre o elige Todas las categorías.</p><button className="secondary" onClick={()=>{setSearch('');setCategory('Todas');}}>Mostrar todos</button></div>}
    </>:<>
-    <a className="back-link" href="#catalogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}>← Volver al catálogo</a>
-    <div className="eyebrow">COTIZADOR</div><h1 ref={heading} tabIndex={-1}>{view==='estimado'&&result?'Tu estimado':product&&!changing?(wallProduct?'Cotiza el acabado de tu muro':floorProduct?'¿Cuánto mide tu piso o losa?':baseFlow?'Mide tu superficie':roofFlow?'¿Cuánto mide tu azotea?':volumeFlow?(product.id==='plastico'?'¿Cuánto necesitas para sellar?':'¿Cuánto necesitas para resanar?'):'Tus medidas'):'Cotiza tu obra'}</h1>
-    {view==='estimado'&&result&&resultProduct?<section className="estimate-view" aria-label="Resultado del estimado">
-     <div className="estimate-highlight"><p className="result-quantity">{quantityLabel(result.quantity,resultProduct.unit,resultProduct.plural)}</p><p className="result-total">{result.total===undefined?'Total por confirmar':money(result.total)}</p></div>
-     <div className="selected-product"><ProductMedia key={resultProduct.id} product={resultProduct}/><div><h2>{resultProduct.name}</h2><p>{resultProduct.presentation}</p></div></div>
-     <p className="estimate-summary">{result.kind==='cracks'?`${formatVolume(result.volumeLitres)} L de relleno · ${result.cracks.length} ${result.cracks.length===1?volumeReference(resultProduct).item:volumeReference(resultProduct).plural}`:<>{format(result.area)} m²{result.thickness&&` · ${result.thickness} mm`}</>}</p>
-     {result.application&&<aside className="coverage-reference"><h2>{result.application.label}</h2><p>{result.application.coats} {result.application.coats===1?'mano':'manos'} · {result.thickness} mm por mano</p><p>{result.application.water}</p><p>{result.application.note}</p></aside>}
-     <p className="estimate-note">Estimado sin merma</p>
-     {result.kind==='area'&&resultProduct.areaCoverage&&<p className="coverage-summary">Sistema a {resultProduct.areaCoverage.coats} manos · Rendimiento aproximado de {resultProduct.areaCoverage.m2PerContainer} m² por cubeta de 19 L.</p>}
-     {result.kind==='cracks'&&<aside className="crack-reference"><p>{volumeReference(resultProduct).note}</p></aside>}
-     {result.theoretical&&<aside className="theoretical-note"><strong>Estimado teórico · No oficial</strong><p>{theoreticalNote}</p></aside>}
-     <button className="copy-button" onClick={async()=>{try{await navigator.clipboard.writeText(result.summary);setCopyStatus('Cotización copiada al portapapeles.');}catch{setCopyStatus('No se pudo copiar. Puedes seleccionar y copiar el resumen.');}}}>▣ Copiar cotización</button><p className="copy-status" role="status">{copyStatus}</p>{copyStatus.startsWith('No se')&&<label>Resumen para copiar<textarea readOnly value={result.summary}/></label>}
-     <button className="text-button edit-button" onClick={()=>{setResult(null);setCopyStatus('');navigate('cotizador');}}>Editar medidas</button>
-     <details className="technical-details"><summary>Ver detalles</summary><dl className="estimate-details">
-      {result.kind==='cracks'?<><div><dt>{volumeReference(resultProduct).referenceLabel}</dt><dd>{result.coverage} L por {volumeReference(resultProduct).container}</dd></div>{result.cracks.map((c,i)=><div key={c.id}><dt>{volumeReference(resultProduct).itemTitle} {i+1}</dt><dd>{format(crackMeasure(c.length))} m × {format(crackMeasure(c.width))} mm × {format(crackMeasure(c.depth))} mm</dd></div>)}</>:<div><dt>{result.theoretical?'Rendimiento teórico':'Rendimiento'}</dt><dd>{coverageDisplay(result.application?.tableCoverage ?? result.coverage,result.productId)} m² por envase{result.application?' y mano':''}</dd></div>}
-      {result.kind==='area'&&resultProduct.areaCoverage&&<div><dt>Aplicación incluida</dt><dd>{resultProduct.areaCoverage.coats} manos</dd></div>}
-      <div><dt>Precio unitario</dt><dd>{result.price===undefined?'Consulta precio':money(result.price)}</dd></div><div><dt>Cálculo</dt><dd>{result.kind==='cracks'?`${formatVolume(result.volumeLitres)} L ÷ ${result.coverage} L`:result.application?`${format(result.area)} m² × ${result.application.coats} manos ÷ ${coverageDisplay(result.application.tableCoverage,result.productId)}`:`${format(result.area)} ÷ ${coverageDisplay(result.coverage,result.productId)}`} → {result.quantity} envases completos</dd></div>
-     </dl><p className="muted">{result.kind==='cracks'?'Se suman los volúmenes rectangulares: largo (m) × ancho (mm) × profundidad (mm) ÷ 1,000 = litros. ':''}Confirma precio y disponibilidad con NAVI antes de comprar. Las condiciones de la superficie pueden cambiar el consumo.</p></details>
-    </section>:<form ref={form} className={roofFlow?`roof-quote-form${baseFlow?' base-cement-form':''}`:wallFlow?`wall-quote-form${wallProduct?' animated-wall-form':''}`:undefined} noValidate onSubmit={e=>{e.preventDefault();calculate();}}>
-     {(!product||changing)&&<section className="product-picker" aria-label="Elegir material">
-      <label>¿Qué quieres hacer?<select ref={workSelect} value={work} onChange={e=>setWork(e.target.value)}><option value="">Elige el tipo de trabajo</option>{works.filter(([id])=>products.some(p=>p.work===id&&p.quotable!==false)).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
-      {work&&<><h2 className="suggestion-heading">Material sugerido</h2><div className="material-options">{products.filter(p=>p.work===work&&p.quotable!==false).map(p=><button type="button" className="material-option" key={p.id} onClick={()=>choose(p.id)}><ProductMedia product={p}/><span><strong>{p.name}</strong><small>{p.presentation} · {p.price===undefined?'Consulta precio':money(p.price)}</small></span><span aria-hidden="true">→</span></button>)}</div></>}
+    {pickingProduct?(work&&<button type="button" className="back-link work-back" onClick={()=>setWork('')}>← Cambiar tipo de trabajo</button>):
+     !showingEstimate&&<a className="back-link" href="#catalogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}>← Volver al catálogo</a>}
+    <div className="eyebrow">COTIZADOR</div><h1 ref={heading} tabIndex={-1}>{view==='estimado'&&result?'Tu estimado':product&&!changing?(wallProduct?'Cotiza el acabado de tu muro':floorProduct?'¿Cuánto mide tu piso o losa?':baseFlow?'Mide tu superficie':roofFlow?'¿Cuánto mide tu azotea?':volumeFlow?(product.id==='plastico'?'¿Cuánto necesitas para sellar?':'¿Cuánto necesitas para resanar?'):'Tus medidas'):pickingWork?'¿Qué quieres hacer?':'Elige un material'}</h1>
+    {showingEstimate&&result&&resultProduct?<EstimateResult product={resultProduct} result={result}/>:<form ref={form} className={roofFlow?`roof-quote-form${baseFlow?' base-cement-form':''}`:wallFlow?`wall-quote-form${wallProduct?' animated-wall-form':''}`:undefined} noValidate onSubmit={e=>{e.preventDefault();calculate();}}>
+     {pickingProduct&&<section className={pickingWork?'work-picker':'product-picker'} aria-label={pickingWork?'Elegir tipo de trabajo':'Elegir material'}>
+      {pickingWork?<WorkPicker onPick={setWork}/>:<>
+       <h2 className="suggestion-heading">Material sugerido</h2>
+       <div className="material-options">{products.filter(p=>p.work===work&&p.quotable!==false).map(p=><button type="button" className="material-option" key={p.id} onClick={()=>choose(p.id)}><ProductMedia product={p}/><span><strong>{p.name}</strong><small>{p.presentation} · {p.price===undefined?'Consulta precio':money(p.price)}</small></span><span aria-hidden="true">→</span></button>)}</div>
+      </>}
       {product&&<button type="button" className="text-button" onClick={()=>{setWork(product.work);setChanging(false);}}>Cancelar cambio</button>}
      </section>}
      {product&&!changing&&<>
@@ -231,7 +235,7 @@ export default function App(){
      </>}
     </form>}
    </>}
-   <footer>NAVI · Materiales y Acabados<span>Martínez de la Torre, Veracruz</span></footer>
+   {!showingEstimate&&<footer>NAVI · Materiales y Acabados<span>Martínez de la Torre, Veracruz</span></footer>}
   </main>
   <nav className="mobile-nav" aria-label="Navegación móvil">{tabs}</nav>
  </>;

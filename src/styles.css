@@ -81,7 +81,7 @@ fieldset { min-width: 0; padding: 0; margin: 0 0 16px; border: 0; }
 .thickness .muted { font-size: 13px; margin-top: 10px; }
 .error { color: #ffc0ac; }
 [aria-invalid=true] { border-color: #ffb7a1; }
-.primary, .secondary, .copy-button { display: flex; justify-content: center; align-items: center; min-height: 48px; padding: 12px 16px; border-radius: 9px; font-weight: 750; }
+.primary, .secondary { display: flex; justify-content: center; align-items: center; min-height: 48px; padding: 12px 16px; border-radius: 9px; font-weight: 750; }
 .primary { background: var(--lime); color: #13200a; border: 1px solid var(--lime); }
 .primary:hover { background: #cbff82; }
 .secondary { border: 1px solid #a1b194; background: transparent; }
@@ -90,20 +90,42 @@ fieldset { min-width: 0; padding: 0; margin: 0 0 16px; border: 0; }
 .spot { border: 1px solid #60734e; border-radius: 12px; padding: 18px; background: #252f20; }
 .spot h2 { margin-bottom: 12px; }
 .spot p { color: #d4decd; font-size: 14px; }
-.estimate-highlight { margin: 20px 0; }
-.result-quantity { font-size: clamp(24px, 6.5vw, 32px); font-weight: 750; line-height: 1.2; margin-bottom: 12px; }
-.result-total { font-size: clamp(32px, 9vw, 54px); letter-spacing: -1px; font-weight: 800; color: var(--lime); line-height: 1.1; }
-.estimate-details { margin: 20px 0; }
-.estimate-details > div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid #354138; font-size: 14px; }
+.estimate-edit { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: transparent; font-size: 14px; white-space: nowrap; }
+.estimate-header .header-inner { gap: 12px; }
+.estimate-page { max-width: 620px; }
+.estimate-card, .estimate-view .technical-details { border: 1px solid #485548; border-radius: 12px; background: #202822; }
+.estimate-card { padding: 15px; }
+.estimate-product { display: grid; grid-template-columns: clamp(68px, 24vw, 106px) minmax(0, 1fr); align-items: center; gap: clamp(10px, 4vw, 18px); }
+.estimate-product .product-media { border-radius: 9px; overflow: hidden; }
+.estimate-product h2 { font-size: clamp(17px, 4.8vw, 22px); }
+.estimate-product p { margin: 3px 0 0; color: #cbd5ca; font-size: 14px; }
+.estimate-highlight { margin: 12px 0 10px; padding-top: 10px; border-top: 1px solid #536154; }
+.result-quantity { font-size: clamp(21px, 5.8vw, 30px); font-weight: 750; line-height: 1.2; margin: 0 0 2px; }
+.result-total { font-size: clamp(33px, 9.6vw, 48px); letter-spacing: -.7px; font-weight: 800; color: var(--lime); line-height: 1.1; margin: 0 0 4px; }
+.result-unpriced { font-size: clamp(24px, 7vw, 32px); }
+.estimate-note { margin: 0; font-size: 13px; color: #cbd5ca; }
+.estimate-measures { display: flex; flex-wrap: wrap; gap: 7px; padding: 0; margin: 0; list-style: none; }
+.estimate-measures li { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 9px; border: 1px solid #546355; border-radius: 8px; background: #283329; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+.estimate-measures svg, .estimate-whatsapp svg, .estimate-secondary-actions svg, .estimate-view summary svg { width: 20px; height: 20px; flex-shrink: 0; }
+.estimate-view .technical-details { margin-top: 12px; }
+.estimate-view .technical-details summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; }
+.estimate-view .technical-details summary::-webkit-details-marker { display: none; }
+.estimate-view .technical-details summary small { margin: 0; }
+.estimate-view .technical-details[open] summary svg { transform: rotate(180deg); }
+.estimate-view .technical-details > :not(summary) { margin-inline: 12px; }
+.estimate-details > div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #354138; font-size: 13px; }
 .estimate-details dt { color: var(--muted); }
-.estimate-details dd { margin: 0; text-align: right; }
-.estimate-summary { color: #d3dcd4; font-size: 15px; margin: -4px 0 8px; }
-.estimate-note { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
-.estimate-view > .muted { font-size: 13px; }
-.copy-button { width: 100%; background: transparent; border: 2px solid var(--lime); margin-top: 18px; font-size: 17px; gap: 12px; }
+.estimate-details dd { min-width: 0; margin: 0; text-align: right; overflow-wrap: anywhere; }
+.estimate-whatsapp { width: 100%; margin-top: 13px; gap: 8px; text-align: center; }
+.estimate-secondary-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+.estimate-secondary-actions > * { gap: 6px; padding: 8px; font-size: 14px; line-height: 1.2; text-align: center; }
+.estimate-secondary-actions > *:hover { background: #202b22; }
 .copy-status { color: var(--lime); font-size: 13px; margin: 8px 0; }
 .copy-status:empty { display: none; }
-.edit-button { display: block; width: 100%; margin: 8px auto 14px; padding: 12px; text-decoration: underline; color: #f5f5f2; text-underline-offset: 4px; }
+.estimate-view > .coverage-summary { margin: 14px 0 0; }
+@media (max-width: 350px) {
+ .estimate-secondary-actions { grid-template-columns: 1fr; }
+}
 textarea { min-height: 180px; }
 footer { max-width: 1280px; margin: auto; padding: 20px 0 8px; margin-top: 28px; border-top: 1px solid #343e35; font-size: 11px; color: var(--muted); }
 footer span { display: block; margin-top: 3px; }
@@ -640,3 +662,76 @@ footer span { display: block; margin-top: 3px; }
  .welcome-copy { text-align: center; }
  .welcome-layout { padding-inline: max(28px, env(safe-area-inset-left)) max(28px, env(safe-area-inset-right)); }
 }
+
+.work-home-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; flex-shrink: 0; }
+.work-view { max-width: 620px; }
+.work-view > h1 { margin-bottom: 4px; }
+.work-intro { margin: 0 0 18px; color: #e3e8e2; }
+.work-back { background: transparent; border: 0; padding: 0; text-align: start; }
+.work-list { list-style: none; display: grid; gap: 9px; margin: 0; padding: 0; }
+.work-card {
+ display: grid;
+ grid-template-columns: clamp(44px, 15vw, 56px) minmax(0, 1fr) 16px;
+ align-items: center;
+ gap: clamp(12px, 4vw, 20px);
+ width: 100%;
+ min-height: 66px;
+ padding: 8px 12px;
+ border: 1px solid #536254;
+ border-radius: 10px;
+ background: linear-gradient(118deg, #1a221c, #151b17);
+ color: #f5f5f2;
+ text-align: start;
+ font-size: clamp(15px, 4.2vw, 17px);
+ font-weight: 700;
+ line-height: 1.26;
+ overflow-wrap: anywhere;
+}
+.work-card:hover { background: #202b22; border-color: var(--lime); }
+.work-icon, .work-chevron { display: block; width: 100%; }
+.work-icon-accent { stroke: var(--lime); }
+.work-view footer { margin-top: 22px; }
+
+.site-header .header-inner { gap: clamp(8px, 2vw, 24px); }
+.header-start { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.header-contact { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.header-contact > button {
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ gap: 4px;
+ min-height: 44px;
+ padding: 4px 7px;
+ border: 1px solid #556457;
+ border-radius: 8px;
+ background: #202822;
+ font-size: 12px;
+ font-weight: 700;
+ line-height: 1.15;
+ text-align: center;
+}
+.header-contact > button:hover { border-color: var(--lime); }
+.header-contact svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--lime); }
+@media (max-width: 599px) {
+ .site-header .brand-logo { width: clamp(92px, 29vw, 168px); }
+}
+@media (max-width: 767px) {
+ .work-header .header-start { align-items: flex-start; flex-direction: column; gap: 0; }
+}
+
+
+.contact-confirmation {
+ width: min(92vw, 400px);
+ max-height: calc(var(--app-height, 100dvh) - 24px);
+ margin: auto;
+ padding: 20px;
+ overflow: auto;
+ color: #f5f5f2;
+ background: #202822;
+ border: 1px solid #556457;
+ border-radius: 14px;
+}
+.contact-confirmation::backdrop { background: rgb(10 14 11 / 76%); }
+.contact-confirmation h2 { margin: 0 0 16px; }
+.contact-confirmation-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.contact-confirmation-actions > * { width: 100%; text-align: center; }

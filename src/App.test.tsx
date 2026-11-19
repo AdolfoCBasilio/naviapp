@@ -19,6 +19,45 @@ async function openWork(user:ReturnType<typeof userEvent.setup>,work:string){
 const calculateButton=()=>screen.getByRole('button',{name:/^Calcular (estimado|material y costo|bolsas y costo|cubetas y costo|bultos y costo)$/});
 const areaInput=(i=1)=>screen.queryByLabelText(`Área de muro ${i} (m²)`)??screen.getByLabelText(`Área de superficie ${i} (m²)`);
 const lengthInput=(i=1)=>screen.queryByLabelText(`Largo de muro ${i} (m)`)??screen.getByLabelText(`Largo de superficie ${i} (m)`);
+describe('Entrada a NaviApp',()=>{
+ it('muestra los enlaces externos de ubicación y contacto en la bienvenida',()=>{
+  window.history.replaceState(null,'','/');
+  render(<App/>);
+  expect(screen.getByRole('link',{name:/Cómo llegar en Google Maps/})).toHaveAttribute('href','https://maps.app.goo.gl/ahz15b6kWgyagmPd6');
+  expect(screen.getByRole('link',{name:/Escríbenos por WhatsApp.*232 174 9491/})).toHaveAttribute('href','https://wa.me/522321749491');
+ });
+ it.each([
+  ['Ver catálogo','#catalogo','Materiales para tu obra'],
+  ['Ir al cotizador','#cotizador','Cotiza tu obra'],
+ ])('abre %s desde la bienvenida y vuelve con el historial',async(name,hash,title)=>{
+  window.history.replaceState(null,'','/');
+  const user=userEvent.setup();render(<App/>);
+  expect(screen.getByRole('heading',{name:'Bienvenido a NAVI'})).toBeVisible();
+  expect(screen.queryByRole('navigation',{name:'Navegación móvil'})).not.toBeInTheDocument();
+  const link=screen.getByRole('link',{name});
+  expect(link).toHaveAttribute('href',hash);
+  await user.click(link);
+  expect(window.location.hash).toBe(hash);
+  expect(screen.getByRole('heading',{name:title})).toHaveFocus();
+  expect(screen.getByRole('navigation',{name:'Navegación móvil'})).toBeInTheDocument();
+  if(hash==='#cotizador')expect(screen.getByLabelText('¿Qué quieres hacer?')).toHaveValue('');
+  act(()=>{
+   window.history.replaceState(null,'','/');
+   window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  expect(screen.getByRole('heading',{name:'Bienvenido a NAVI'})).toHaveFocus();
+ });
+ it.each([
+  ['#catalogo','Materiales para tu obra'],
+  ['#cotizador','Cotiza tu obra'],
+ ])('respeta el enlace directo %s', (hash,title)=>{
+  window.history.replaceState(null,'',hash);
+  render(<App/>);
+  expect(screen.getByRole('heading',{name:title})).toBeVisible();
+  expect(screen.queryByRole('heading',{name:'Bienvenido a NAVI'})).not.toBeInTheDocument();
+ });
+});
+
 describe('Navegación y cotización',()=>{
  it('cada tarjeta abre medidas con su producto sin volver a pedir trabajo',async()=>{
   const user=userEvent.setup();render(<App/>);

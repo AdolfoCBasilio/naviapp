@@ -3,6 +3,7 @@ import {categories,products,thicknessYieldsByProduct,morteroTheoreticalYields,ba
 import {estimate,estimateVolume,money,positive} from './calculate';
 import {ProductMedia} from './ProductMedia';
 import {BrandLogo} from './BrandLogo';
+import {Welcome} from './Welcome';
 import {BaseCementApplication,BaseCementReview} from './BaseCementQuote';
 import {RoofMeasurements,RoofReview} from './RoofMeasurements';
 import {FloorMeasurements} from './FloorMeasurements';
@@ -14,8 +15,15 @@ import {VolumeMeasurements} from './RepairMeasurements';
 import {blankCrack,volumeReference,crackFieldId,crackMeasure,crackVolume,formatVolume,type Crack} from './CrackMeasurements';
 
 const works=[['block','Dar acabado a un muro de block'],['concreto','Recubrir concreto liso'],['piso','Nivelar un piso o losa'],['azotea','Impermeabilizar una azotea'],['resanes','Resanar grietas'],['sellados','Hacer sellados puntuales'],['otros','Otros acabados']];
-type View='catalogo'|'cotizador'|'estimado';
-const initialView=():View=>window.location.hash==='#cotizador'||window.location.hash==='#estimado'?'cotizador':'catalogo';
+type View='inicio'|'catalogo'|'cotizador'|'estimado';
+function viewFromLocation(hasResult=false):View {
+ switch(window.location.hash){
+  case '#catalogo': return 'catalogo';
+  case '#cotizador': return 'cotizador';
+  case '#estimado': return hasResult?'estimado':'cotizador';
+  default: return 'inicio';
+ }
+}
 type BaseApplication={label:string;coats:number;water:string;note:string;tableCoverage:number};
 type Result={productId:string;quantity:number;price?:number;total?:number;thickness:string;coverage:number;summary:string;theoretical:boolean;application?:BaseApplication}&({kind:'area';area:number}|{kind:'cracks';volumeLitres:number;cracks:Crack[]});
 const theoreticalNote='Cálculo teórico no validado por Cemix. Espesor fuera del rango de aplicación de 10–50 mm indicado por el fabricante. Este cálculo de consumo no confirma la aptitud del producto para capas delgadas; consulta a Cemix antes de aplicarlo.';
@@ -25,7 +33,7 @@ const getRoofCoverage=(product?:Product)=>product?.work==='azotea'?product.areaC
 const quantityLabel=(quantity:number,unit:string,plural:string)=>`${quantity} ${quantity===1?unit:plural} ${unit==='bulto'?(quantity===1?'completo':'completos'):(quantity===1?'completa':'completas')}`;
 
 export default function App(){
- const [view,setView]=useState<View>(initialView);
+ const [view,setView]=useState<View>(()=>viewFromLocation());
  const [search,setSearch]=useState(''),[category,setCategory]=useState('Todas');
  const [work,setWork]=useState(''),[productId,setProductId]=useState('');
  const [changing,setChanging]=useState(false);
@@ -53,13 +61,16 @@ export default function App(){
  const baseThicknessLabel=baseApplication?.coats===1?'Espesor':'Espesor por mano';
  const productYields=baseApplication?baseApplication.yields:theoretical?morteroTheoreticalYields:product?thicknessYieldsByProduct[product.id]:undefined;
  const reset=()=>{setResult(null);setErrors({});setCopyStatus('');};
- const navigate=(next:View)=>{
+ const navigate=(next:Exclude<View,'inicio'>)=>{
   if(view==='catalogo')catalogScroll.current=content.current?.scrollTop ?? 0;
   if(next===view)return;
   window.history.pushState(null,'',`#${next}`);setView(next);
  };
  useEffect(()=>{
-  const sync=()=>{if(previousView.current==='catalogo')catalogScroll.current=content.current?.scrollTop ?? 0;const hash=window.location.hash;setView(hash==='#estimado'&&result?'estimado':hash==='#cotizador'||hash==='#estimado'?'cotizador':'catalogo');};
+  const sync=()=>{
+   if(previousView.current==='catalogo')catalogScroll.current=content.current?.scrollTop ?? 0;
+   setView(viewFromLocation(!!result));
+  };
   window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);
   return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync);};
  },[result]);
@@ -141,9 +152,15 @@ export default function App(){
  const yieldSelector=!product?null:productYields?<fieldset className="thickness" aria-describedby="coverage-help coverage-error"><legend>{wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'} <span>(mm)</span></legend><div className="thickness-options" style={{gridTemplateColumns:`repeat(${Math.min(5,Object.keys(productYields).length)}, minmax(0, 1fr))`}} role="group" aria-label={wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'}>{Object.keys(productYields).sort((a,b)=>Number(a)-Number(b)).map(mm=><button type="button" key={mm} aria-label={`${mm} mm`} aria-pressed={thickness===mm} aria-invalid={!!errors.coverage} onClick={()=>{setThickness(mm);reset();}}>{wallProduct||floorProduct?`${mm} mm`:mm}</button>)}</div><p id="coverage-help" className="muted">{thickness?`${coverageDisplay(productYields[thickness],product.id)} m² por ${product.presentation.toLowerCase()}${baseApplication?' y mano':''}`:`Elige un espesor para ver el rendimiento por ${product.presentation.toLowerCase()}.`}</p></fieldset>:product.areaCoverage?<aside className="coverage-reference" id="coverage-help"><h2>Rendimiento Cemix</h2><p><strong>{product.areaCoverage.m2PerContainer} m² por cubeta de 19 L · {product.areaCoverage.coats} manos</strong></p><p>{product.areaCoverage.note}</p></aside>:<label>Rendimiento de ficha técnica (m² por envase)<input aria-label="Rendimiento de ficha técnica (m² por envase)" value={coverage} inputMode="decimal" placeholder="Rendimiento confirmado" aria-invalid={!!errors.coverage} aria-describedby="coverage-help coverage-error" onChange={e=>{setCoverage(e.target.value);reset();}}/><small id="coverage-help">Consulta la ficha técnica para tu aplicación, espesor y número de manos. No tenemos un rendimiento confirmado para este producto.</small></label>;
  const visibleProducts=products.filter(p=>(category==='Todas'||p.category===category)&&p.name.toLocaleLowerCase('es-MX').includes(search.trim().toLocaleLowerCase('es-MX')));
  const resultProduct=result?products.find(p=>p.id===result.productId):undefined;
+ if(view==='inicio')return <Welcome contentRef={content} headingRef={heading} onNavigate={section=>{
+  if(section==='cotizador'){
+   setProductId('');setWork('');setChanging(false);reset();
+  }
+  navigate(section);
+ }}/>;
  const tabs=<>{(['catalogo','cotizador'] as const).map(tab=><a key={tab} href={`#${tab}`} aria-current={(view==='catalogo'?tab==='catalogo':tab==='cotizador')?'page':undefined} onClick={e=>{e.preventDefault();navigate(tab);}}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">{tab==='catalogo'?<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></>:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h8"/></>}</svg>{tab==='catalogo'?'Catálogo':'Cotizador'}</a>)}</>;
  return <>
-  <a className="skip-link" href="#contenido">Ir al contenido</a>
+  <a className="skip-link" href="#contenido" onClick={event=>{event.preventDefault();heading.current?.focus();}}>Ir al contenido</a>
   <header className="site-header"><div className="header-inner"><nav className="desktop-nav" aria-label="Navegación principal">{tabs}</nav><a className="brand" href="#catalogo" aria-label="NAVI · Ir al catálogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}><BrandLogo/></a></div></header>
   <main ref={content} id="contenido" className={view==='catalogo'?'catalog-view':volumeFlow?'quote-view repair-quote-view':roofFlow?'quote-view roof-quote-view':wallFlow?`quote-view wall-quote-view${wallProduct?' animated-wall-view':''}`:'quote-view'}>
    {view==='catalogo'?<>

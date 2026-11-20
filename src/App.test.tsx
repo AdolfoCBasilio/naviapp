@@ -40,7 +40,7 @@ describe('Entrada a NaviApp',()=>{
    'Mándanos un WhatsApp','Ver dónde está NAVI','Ir a catálogo y cotizador',
   ]);
   expect(screen.getByRole('link',{name:'Ver dónde está NAVI'})).toHaveAttribute('href','https://maps.app.goo.gl/ahz15b6kWgyagmPd6');
-  expect(screen.getByRole('link',{name:'Mándanos un WhatsApp'})).toHaveAttribute('href','https://wa.me/522321749491');
+  expect(screen.getByRole('link',{name:'Mándanos un WhatsApp'})).toHaveAttribute('href','https://wa.me/522321125107');
  });
  it('abre el catálogo, permite ir al cotizador y vuelve a inicio con el historial',async()=>{
   window.history.replaceState(null,'','/');
@@ -94,7 +94,7 @@ it('confirma Maps y WhatsApp en las pantallas internas y conserva la bienvenida'
  const whatsapp=screen.getByRole('dialog',{name:'¿Quieres mandar el WhatsApp ahora?'});
  const url=new URL(within(whatsapp).getByRole('link',{name:'Sí, quiero enviar WhatsApp'}).getAttribute('href')!);
  expect(url.origin).toBe('https://wa.me');
- expect(url.pathname).toBe('/522321749491');
+ expect(url.pathname).toBe('/522321125107');
  expect(url.searchParams.get('text')).toBe('hola buen dia Navi');
  await user.click(within(whatsapp).getByRole('button',{name:'No por el momento'}));
  await user.click(screen.getByRole('link',{name:/Inicio/}));
@@ -107,7 +107,7 @@ function expectWhatsAppQuote(summary:unknown){
  const link=screen.getByRole('link',{name:'Enviar por WhatsApp'});
  const url=new URL(link.getAttribute('href')!);
  expect(url.origin).toBe('https://wa.me');
- expect(url.pathname).toBe('/522321749491');
+ expect(url.pathname).toBe('/522321125107');
  expect(url.searchParams.get('text')).toBe(summary);
 }
 
@@ -221,7 +221,7 @@ describe('Navegación y cotización',()=>{
   await user.click(within(dialog).getByRole('button',{name:'No por ahora'}));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(maps).toHaveFocus();
-  expect(within(result).getByRole('link',{name:'Enviar por WhatsApp'})).toHaveAttribute('href',expect.stringContaining('https://wa.me/522321749491?text='));
+  expect(within(result).getByRole('link',{name:'Enviar por WhatsApp'})).toHaveAttribute('href',expect.stringContaining('https://wa.me/522321125107?text='));
  });
  it('conserva Consulta precio cuando el catálogo no tiene importe',async()=>{
   const user=userEvent.setup();

@@ -164,12 +164,7 @@ export default function App(){
  const resultProduct=result?products.find(p=>p.id===result.productId):undefined;
  const showingEstimate=view==='estimado'&&!!result&&!!resultProduct;
  const editEstimate=()=>{reset();navigate('cotizador');};
- if(view==='inicio')return <Welcome contentRef={content} headingRef={heading} onNavigate={section=>{
-  if(section==='cotizador'){
-   setProductId('');setWork('');setChanging(false);reset();
-  }
-  navigate(section);
- }}/>;
+ if(view==='inicio')return <Welcome contentRef={content} headingRef={heading} onNavigate={()=>navigate('catalogo')}/>;
  const tabs=<>{(['catalogo','cotizador'] as const).map(tab=><a key={tab} href={`#${tab}`} aria-current={(view==='catalogo'?tab==='catalogo':tab==='cotizador')?'page':undefined} onClick={e=>{e.preventDefault();navigate(tab);}}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">{tab==='catalogo'?<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></>:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h8"/></>}</svg>{tab==='catalogo'?'Catálogo':'Cotizador'}</a>)}</>;
  return <>
   <a className="skip-link" href="#contenido" onClick={event=>{event.preventDefault();heading.current?.focus();}}>Ir al contenido</a>

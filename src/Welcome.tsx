@@ -3,10 +3,10 @@ import {BrandLogo} from './BrandLogo';
 import {mapsUrl,whatsappUrl} from './contact';
 
 const entries=[
- {section:'catalogo',label:'Ver catálogo',description:'Explora productos, presentaciones y precios.'},
- {section:'cotizador',label:'Ir al cotizador',description:'Calcula cuánto material necesitas y su costo estimado.'},
+ {href:whatsappUrl,label:'Mándanos un WhatsApp',icon:'M4.1 14.2 3 17l3.1-.9a7 7 0 1 0-2-1.9ZM7.7 6.5c-.6 0-1 .6-.9 1.4.3 2.1 2.7 4.4 4.8 4.8.8.1 1.4-.3 1.5-.9l-1.8-1-1 1c-1.1-.6-1.9-1.4-2.5-2.5l.9-1Z'},
+ {href:mapsUrl,label:'Ver dónde está NAVI',icon:'M16 8c0 4-6 8.5-6 8.5S4 12 4 8a6 6 0 1 1 12 0ZM12 8a2 2 0 1 0-4 0 2 2 0 0 0 4 0Z'},
+ {href:'#catalogo',label:'Ir a catálogo y cotizador',icon:'M5 2.5h10a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2ZM3 7h14m-10 4h.1m2.9 0h.1m2.9 0h.1M7 14h.1m2.9 0h.1m2.9 0h.1'},
 ] as const;
-type Section=(typeof entries)[number]['section'];
 
 function WelcomePlan(){
  return <svg className="welcome-plan" viewBox="0 0 360 204" fill="none" aria-hidden="true" focusable="false">
@@ -25,12 +25,12 @@ function ExternalArrow(){
 }
 
 export function Welcome({contentRef,headingRef,onNavigate}:{
- contentRef:Ref<HTMLElement>;headingRef:Ref<HTMLHeadingElement>;onNavigate:(section:Section)=>void;
+ contentRef:Ref<HTMLElement>;headingRef:Ref<HTMLHeadingElement>;onNavigate:()=>void;
 }){
- const open=(event:MouseEvent<HTMLAnchorElement>,section:Section)=>{
+ const open=(event:MouseEvent<HTMLAnchorElement>)=>{
   if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
   event.preventDefault();
-  onNavigate(section);
+  onNavigate();
  };
 
  return <main id="contenido" className="welcome-view" ref={contentRef}>
@@ -38,40 +38,20 @@ export function Welcome({contentRef,headingRef,onNavigate}:{
    <div className="welcome-decoration"><WelcomePlan/><WelcomePlan/></div>
    <div className="welcome-content">
     <BrandLogo/>
-    <div className="welcome-copy">
-     <h1 ref={headingRef} tabIndex={-1}>Bienvenido a NAVI</h1>
-     <p>Encuentra los materiales para tu obra y calcula cuánto necesitas.</p>
-    </div>
+    <h1 className="welcome-title" ref={headingRef} tabIndex={-1}>Bienvenido a NAVI</h1>
     <nav className="welcome-actions" aria-label="Entrar a NAVI">
-     {entries.map(({section,label,description})=><a key={section} className={`welcome-card welcome-card-${section}`}
-      href={`#${section}`} aria-labelledby={`welcome-${section}`} aria-describedby={`welcome-${section}-description`}
-      onClick={event=>open(event,section)}>
-      <svg className="welcome-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-       {section==='catalogo'?<><rect x="3" y="3" width="26" height="26" rx="4"/><path d="M12 3v26M20 3v26M3 12h26M3 20h26"/></>:<>
-        <rect x="3" y="2" width="26" height="28" rx="4"/><path d="M3 11h26"/>
-        {[10,16,22].map(x=><path key={x} d={`M${x} 17h.1m-.1 6h.1`} strokeWidth="3.5"/>)}
-       </>}
-      </svg>
-      <span className="welcome-card-copy"><strong id={`welcome-${section}`}>{label}</strong><span id={`welcome-${section}-description`}>{description}</span></span>
-      <svg className="welcome-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12h17m-7-7 7 7-7 7"/></svg>
-     </a>)}
+     {entries.map(({href,label,icon})=>{
+      const external=href!=='#catalogo';
+      return <a key={href} className={href===whatsappUrl?'welcome-card welcome-card-primary':'welcome-card'}
+       href={href} target={external?'_blank':undefined} rel={external?'noopener noreferrer':undefined}
+       onClick={external?undefined:open}>
+       <svg className="welcome-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icon}/></svg>
+       <strong>{label}</strong>
+       {external?<ExternalArrow/>:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12h17m-7-7 7 7-7 7"/></svg>}
+      </a>;
+     })}
     </nav>
    </div>
-   <footer className="welcome-contact">
-    <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M16 8c0 4-6 8.5-6 8.5S4 12 4 8a6 6 0 1 1 12 0Z"/><circle cx="10" cy="8" r="2"/></svg>
-     <span><strong>Martínez de la Torre, Veracruz</strong><small>Cómo llegar en Google Maps</small></span>
-     <ExternalArrow/>
-    </a>
-    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4.1 14.2 3 17l3.1-.9a7 7 0 1 0-2-1.9Z"/>
-      <path d="M7.7 6.5c-.6 0-1 .6-.9 1.4.3 2.1 2.7 4.4 4.8 4.8.8.1 1.4-.3 1.5-.9l-1.8-1-1 1c-1.1-.6-1.9-1.4-2.5-2.5l.9-1Z"/>
-     </svg>
-     <span><strong>Escríbenos por WhatsApp</strong><small>232 174 9491</small></span>
-     <ExternalArrow/>
-    </a>
-   </footer>
   </div>
  </main>;
 }

@@ -33,27 +33,29 @@ const calculateButton=()=>screen.getByRole('button',{name:/^Calcular (estimado|m
 const areaInput=(i=1)=>screen.queryByLabelText(`Área de muro ${i} (m²)`)??screen.getByLabelText(`Área de superficie ${i} (m²)`);
 const lengthInput=(i=1)=>screen.queryByLabelText(`Largo de muro ${i} (m)`)??screen.getByLabelText(`Largo de superficie ${i} (m)`);
 describe('Entrada a NaviApp',()=>{
- it('muestra los enlaces externos de ubicación y contacto en la bienvenida',()=>{
+ it('muestra las tres opciones de inicio en orden',()=>{
   window.history.replaceState(null,'','/');
   render(<App/>);
-  expect(screen.getByRole('link',{name:/Cómo llegar en Google Maps/})).toHaveAttribute('href','https://maps.app.goo.gl/ahz15b6kWgyagmPd6');
-  expect(screen.getByRole('link',{name:/Escríbenos por WhatsApp.*232 174 9491/})).toHaveAttribute('href','https://wa.me/522321749491');
+  expect(screen.getAllByRole('link').map(link=>link.textContent)).toEqual([
+   'Mándanos un WhatsApp','Ver dónde está NAVI','Ir a catálogo y cotizador',
+  ]);
+  expect(screen.getByRole('link',{name:'Ver dónde está NAVI'})).toHaveAttribute('href','https://maps.app.goo.gl/ahz15b6kWgyagmPd6');
+  expect(screen.getByRole('link',{name:'Mándanos un WhatsApp'})).toHaveAttribute('href','https://wa.me/522321749491');
  });
- it.each([
-  ['Ver catálogo','#catalogo','Materiales para tu obra'],
-  ['Ir al cotizador','#cotizador','¿Qué quieres hacer?'],
- ])('abre %s desde la bienvenida y vuelve con el historial',async(name,hash,title)=>{
+ it('abre el catálogo, permite ir al cotizador y vuelve a inicio con el historial',async()=>{
   window.history.replaceState(null,'','/');
   const user=userEvent.setup();render(<App/>);
   expect(screen.getByRole('heading',{name:'Bienvenido a NAVI'})).toBeVisible();
   expect(screen.queryByRole('navigation',{name:'Navegación móvil'})).not.toBeInTheDocument();
-  const link=screen.getByRole('link',{name});
-  expect(link).toHaveAttribute('href',hash);
+  const link=screen.getByRole('link',{name:'Ir a catálogo y cotizador'});
+  expect(link).toHaveAttribute('href','#catalogo');
   await user.click(link);
-  expect(window.location.hash).toBe(hash);
-  expect(screen.getByRole('heading',{name:title})).toHaveFocus();
-  expect(screen.getByRole('navigation',{name:'Navegación móvil'})).toBeInTheDocument();
-  if(hash==='#cotizador')expect(within(screen.getByRole('list',{name:'Tipos de trabajo'})).getAllByRole('button')).toHaveLength(6);
+  expect(window.location.hash).toBe('#catalogo');
+  expect(screen.getByRole('heading',{name:'Materiales para tu obra'})).toHaveFocus();
+  const navigation=screen.getByRole('navigation',{name:'Navegación móvil'});
+  await user.click(within(navigation).getByRole('link',{name:'Cotizador'}));
+  expect(window.location.hash).toBe('#cotizador');
+  expect(screen.getByRole('heading',{name:'¿Qué quieres hacer?'})).toHaveFocus();
   act(()=>{
    window.history.replaceState(null,'','/');
    window.dispatchEvent(new PopStateEvent('popstate'));
@@ -97,7 +99,7 @@ it('confirma Maps y WhatsApp en las pantallas internas y conserva la bienvenida'
  await user.click(within(whatsapp).getByRole('button',{name:'No por el momento'}));
  await user.click(screen.getByRole('link',{name:/Inicio/}));
  expect(screen.queryByRole('banner')).not.toBeInTheDocument();
- expect(screen.getByRole('link',{name:/Escríbenos por WhatsApp/})).toBeVisible();
+ expect(screen.getByRole('link',{name:'Mándanos un WhatsApp'})).toBeVisible();
 });
 
 

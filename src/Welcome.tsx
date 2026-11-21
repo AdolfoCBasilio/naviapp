@@ -42,7 +42,8 @@ export function Welcome({contentRef,headingRef,onNavigate}:{
     <nav className="welcome-actions" aria-label="Entrar a NAVI">
      {entries.map(({href,label,icon})=>{
       const external=href!=='#catalogo';
-      return <a key={href} className={href===whatsappUrl?'welcome-card welcome-card-primary':'welcome-card'}
+      const colorClass=href===whatsappUrl?' welcome-card-primary':href===mapsUrl?' welcome-card-location':'';
+      return <a key={href} className={`welcome-card${colorClass}`}
        href={href} target={external?'_blank':undefined} rel={external?'noopener noreferrer':undefined}
        onClick={external?undefined:open}>
        <svg className="welcome-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icon}/></svg>

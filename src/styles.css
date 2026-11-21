@@ -628,7 +628,15 @@ footer span { display: block; margin-top: 3px; }
 .welcome-card-primary { background: var(--lime); color: #162011; border-color: var(--lime); }
 .welcome-card-primary:hover { background: #c7fc82; }
 .welcome-card svg { display: block; width: 100%; }
-.welcome-card:not(.welcome-card-primary) svg { color: var(--lime); }
+.welcome-card:not(.welcome-card-primary, .welcome-card-location) svg { color: var(--lime); }
+.welcome-card-location {
+ background:
+  radial-gradient(ellipse at 24% 0%, #f8f3e9b3, transparent 61%),
+  linear-gradient(120deg, #cdc9c5, #ece6df 29%, #e7dce3 49%, #d8dce2 72%, #e3ddd4);
+ color: #162011;
+ border-color: #cfc8c0;
+}
+.welcome-card-location:hover { border-color: #f1ece4; }
 .welcome-card strong { font-size: clamp(18px, 5.3vw, 24px); line-height: 1.15; overflow-wrap: anywhere; }
 @media (min-width: 768px) {
  .welcome-title { text-align: center; }

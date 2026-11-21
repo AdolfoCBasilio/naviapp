@@ -41,6 +41,8 @@ export function EstimateResult({result,product,onSave,editingItem}:{
  const total=result.total===undefined?'Consulta precio':money(result.total);
  const materialCalculation=result.kind==='cracks'
   ?`${formatVolume(result.volumeLitres)} L ÷ ${result.coverage} L`
+  :result.kind==='concrete'
+   ?`${format(result.volumeM3)} m³ × ${result.coverage} bultos/m³`
   :application
    ?`${format(result.area)} m² × ${application.coats} ${application.coats===1?'mano':'manos'} ÷ ${coverageDisplay(application.tableCoverage,product.id)} m²`
    :`${format(result.area)} m² ÷ ${coverageDisplay(result.coverage,product.id)} m²`;
@@ -48,7 +50,8 @@ export function EstimateResult({result,product,onSave,editingItem}:{
  const measures:{icon:keyof typeof measureIcons;text:string}[]=[];
  if(result.kind==='area')measures.push({icon:'area',text:`${format(result.area)} m²${areaUnit}`});
  if(result.kind==='cracks'&&volume)measures.push({icon:'volume',text:`${formatVolume(result.volumeLitres)} L de relleno · ${result.cracks.length} ${result.cracks.length===1?volume.item:volume.plural}`});
- if(result.thickness)measures.push({icon:'thickness',text:`${result.thickness} mm ${application?'por mano':'de espesor'}`});
+ if(result.kind==='concrete')measures.push({icon:'volume',text:`${format(result.volumeM3)} m³ de concreto`});
+ if(result.thickness)measures.push({icon:'thickness',text:`${result.thickness} ${result.kind==='concrete'?'cm':'mm'} ${application?'por mano':'de espesor'}`});
  if(coats)measures.push({icon:'hands',text:`${coats} ${coats===1?'mano':'manos'}`});
  if(application)measures.push({icon:'use',text:application.label});
 
@@ -84,6 +87,9 @@ export function EstimateResult({result,product,onSave,editingItem}:{
      {result.cracks.map((crack,index)=><div key={crack.id}><dt>{volume.itemTitle} {index+1}</dt>
       <dd>{format(crackMeasure(crack.length))} m × {format(crackMeasure(crack.width))} mm × {format(crackMeasure(crack.depth))} mm</dd></div>)}
      <div><dt>Volumen total</dt><dd>{formatVolume(result.volumeLitres)} L</dd></div>
+    </>:result.kind==='concrete'?<>
+     <div><dt>Tipo de mezcla</dt><dd>{result.dosageLabel}</dd></div>
+     <div><dt>Consumo de cemento</dt><dd>{result.coverage} bultos de 25 kg por m³</dd></div>
     </>:<>
      <div><dt>{result.theoretical?'Rendimiento teórico':'Rendimiento'}</dt><dd>{coverageDisplay(application?.tableCoverage??result.coverage,product.id)} m² por {application?'bulto y mano':'envase'}</dd></div>
      {application&&<div><dt>Espesor por mano</dt><dd>{result.thickness} mm</dd></div>}
@@ -110,6 +116,7 @@ export function EstimateResult({result,product,onSave,editingItem}:{
   {copyStatus==='failed'&&<label>Resumen para copiar<textarea readOnly value={result.summary}/></label>}
   {application&&<aside className="coverage-reference"><h2>Preparación y aplicación</h2><p>{application.water}</p><p>{application.note}</p></aside>}
   {system&&<p className="coverage-summary">Sistema a {system.coats} manos · {system.note}</p>}
+  {product.technical&&<aside className="coverage-reference"><p>{product.technical.note}</p><a className="text-button" href={product.technical.sheet} target="_blank" rel="noopener noreferrer">Ver ficha técnica de {product.technical.manufacturer??'Cemix'}</a></aside>}
   {volume&&<aside className="crack-reference"><p>{volume.note}</p></aside>}
   {result.theoretical&&<aside className="theoretical-note"><strong>Estimado teórico · No oficial</strong><p>{theoreticalNote}</p></aside>}
  </section>;

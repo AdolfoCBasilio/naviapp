@@ -1,5 +1,5 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
-import {categories,products,thicknessYieldsByProduct,morteroTheoreticalYields,baseCementoApplications,type BaseCementoUse,type Product} from './catalog';
+import {categories,products,thicknessYieldsByProduct,morteroTheoreticalYields,baseCementoApplications,concreteDosages,type BaseCementoUse,type Product} from './catalog';
 import {estimate,estimateVolume,money,positive} from './calculate';
 import {searchCatalog} from './catalogSearch';
 import {ProductMedia} from './ProductMedia';
@@ -15,6 +15,8 @@ import {WorkPicker} from './WorkPicker';
 import {BaseCementApplication,BaseCementReview} from './BaseCementQuote';
 import {RoofMeasurements,RoofReview} from './RoofMeasurements';
 import {FloorMeasurements} from './FloorMeasurements';
+import {TileAdhesiveReview,TileAdhesiveThickness} from './TileAdhesiveQuote';
+import {ConcreteMix,ConcreteReview,estimateConcrete} from './ConcreteQuote';
 import {MortarSection} from './FloorDiagram';
 import {WallFinishDetail} from './WallDiagram';
 import {WallMeasurements} from './WallMeasurements';
@@ -63,7 +65,9 @@ export default function App(){
  const pickingWork=pickingProduct&&!work;
  const wallProduct=product?.category==='Muros y acabados';
  const floorProduct=product?.id==='mortero';
- const wallFlow=(wallProduct||floorProduct)&&view==='cotizador'&&!changing;
+ const tileProduct=product?.id==='psp';
+ const concreteProduct=product?.id==='moctezuma';
+ const wallFlow=(wallProduct||floorProduct||tileProduct||concreteProduct)&&view==='cotizador'&&!changing;
  const roofCoverage=getRoofCoverage(product);
  const roofProduct=!!roofCoverage||product?.id==='diez';
  const roofFlow=roofProduct&&view==='cotizador'&&!changing;
@@ -135,7 +139,7 @@ export default function App(){
   const crossesRoof=selectedRoof!==roofProduct;
   const empty=surfaces.length===1&&surfaces.every(s=>!s.area&&!s.length&&!s.side);
   if(fresh||selected.category!==product?.category||(crossesRoof&&empty)){
-   const dimensions=selected.category==='Muros y acabados'||selected.id==='mortero'||selectedRoof;
+   const dimensions=selected.category==='Muros y acabados'||selected.id==='mortero'||selected.id==='psp'||selected.id==='moctezuma'||selectedRoof;
    setSurfaces([blank(dimensions?'dimensions':'area')]);
   }
   setProductId(id);setWork(selected.work);setCoverage('');setThickness('');setMorteroMode('cemix');setBaseUse('membrane');setCracks([blankCrack()]);setChanging(false);reset();
@@ -168,6 +172,22 @@ export default function App(){
    if(s.mode==='area'){const n=positive(s.area);if(!Number.isFinite(n))next[`${i}-area`]='Ingresa un área mayor que cero.';else area+=n;}
    else{const l=positive(s.length),w=positive(s.side);if(!Number.isFinite(l))next[`${i}-length`]='Ingresa un largo mayor que cero.';if(!Number.isFinite(w))next[`${i}-side`]='Ingresa una medida mayor que cero.';if(Number.isFinite(l)&&Number.isFinite(w)){const measured=surfaceArea(s);if(measured!==null)area+=measured;else next[`${i}-length`]='Las medidas están fuera del rango de cálculo.';}}
   });
+  if(concreteProduct){
+   const depthCm=positive(thickness);
+   const dosage=concreteDosages.find(option=>String(option.bags)===coverage);
+   if(!Number.isFinite(depthCm))next.depth='Ingresa un espesor mayor que cero en centímetros.';
+   if(!dosage)next.coverage='Elige el tipo de mezcla.';
+   setErrors(next);setResult(null);
+   if(Object.keys(next).length||!dosage)return;
+   try{
+    const calculated=estimateConcrete(area,depthCm,dosage.bags,product.price);
+    const dosageLabel=`${dosage.label} · ${dosage.strength} kg/cm² (referencia)`;
+    const summary=`NAVI · Estimado de cemento sin merma\n${product.name} · ${product.presentation}\nÁrea: ${format(area)} m² · Espesor: ${capturedMeasure(depthCm)} cm\nVolumen de concreto: ${capturedMeasure(calculated.volumeM3)} m³\nMezcla: ${dosageLabel}\nDosificación: ${dosage.bags} bultos por m³\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total: Consulta precio':'Total: '+money(calculated.total)}\n\n${product.technical?.note??''}`;
+    setResult({...calculated,kind:'concrete',productId,thickness,coverage:dosage.bags,dosageLabel,summary,theoretical:false});
+    navigate('estimado');
+   }catch{setErrors({depth:'Las medidas están fuera del rango de cálculo.'});}
+   return;
+  }
   const tableYield=productYields?productYields[thickness]:product.areaCoverage?.m2PerContainer ?? positive(coverage);
   const yieldValue=baseApplication?tableYield/baseApplication.coats:tableYield;
   if(!yieldValue||!Number.isFinite(yieldValue))next.coverage=productYields?'Elige el espesor para conocer el rendimiento.':'Falta el rendimiento confirmado de la ficha técnica, en m² por envase.';
@@ -180,11 +200,12 @@ export default function App(){
    if(surface.mode==='area')return `${name} ${index+1}: ${measured} (área directa)`;
    return `${name} ${index+1}: ${capturedMeasure(positive(surface.length))} m de largo × ${capturedMeasure(positive(surface.side))} m de ${dimensionName} · ${measured}`;
   }).join('\n');
-  const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\nÁrea: ${format(area)} m²${thickness?' · Espesor: '+thickness+' mm':''}\n${dimensions}\nRendimiento: ${baseApplication?`${tableYield} m² por bulto y mano\nUso: ${baseApplication.label}\nManos: ${baseApplication.coats}\nEspesor por mano: ${thickness} mm\nPreparación: ${baseApplication.water}\n${baseApplication.note}`:`${yieldValue} m² por envase`}${product.areaCoverage?`\nAplicación: ${product.areaCoverage.coats} manos (incluidas en el rendimiento)\n${product.areaCoverage.note}`:''}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total: Consulta precio':'Total: '+money(calculated.total)}${theoretical?'\n\n'+theoreticalNote+'\nBase: 1.33 m² a 10 mm por bulto de 25 kg. Rendimiento teórico = 1.33 × 10 ÷ espesor (mm).':''}`;
+  const summary=`NAVI · Estimado sin merma\n${product.name} · ${product.presentation}\nÁrea: ${format(area)} m²${thickness?' · Espesor: '+thickness+' mm':''}\n${dimensions}\nRendimiento: ${baseApplication?`${tableYield} m² por bulto y mano\nUso: ${baseApplication.label}\nManos: ${baseApplication.coats}\nEspesor por mano: ${thickness} mm\nPreparación: ${baseApplication.water}\n${baseApplication.note}`:`${yieldValue} m² por envase`}${product.areaCoverage?`\nAplicación: ${product.areaCoverage.coats} manos (incluidas en el rendimiento)\n${product.areaCoverage.note}`:''}${product.technical?`\n${product.technical.note}`:''}\nCantidad: ${quantityLabel(calculated.quantity,product.unit,product.plural)}\nPrecio unitario: ${product.price===undefined?'Consulta precio':money(product.price)}\n${calculated.total===undefined?'Total: Consulta precio':'Total: '+money(calculated.total)}${theoretical?'\n\n'+theoreticalNote+'\nBase: 1.33 m² a 10 mm por bulto de 25 kg. Rendimiento teórico = 1.33 × 10 ÷ espesor (mm).':''}`;
   setResult({...calculated,kind:'area',productId,thickness,coverage:yieldValue,summary,theoretical,application:baseApplication?{label:baseApplication.label,coats:baseApplication.coats,water:baseApplication.water,note:baseApplication.note,tableCoverage:tableYield}:undefined});navigate('estimado');
  };
  const field=(i:number,key:'area'|'length'|'side',label:string)=><label htmlFor={`surface-${i}-${key}`}>{label}<input id={`surface-${i}-${key}`} aria-label={label} inputMode="decimal" value={surfaces[i][key]} placeholder="0" aria-invalid={!!errors[`${i}-${key}`]} aria-describedby={errors[`${i}-${key}`]?`error-${i}-${key}`:undefined} onChange={e=>update(i,key,e.target.value)}/>{errors[`${i}-${key}`]&&<small className="error" id={`error-${i}-${key}`}>{errors[`${i}-${key}`]}</small>}</label>;
- const yieldSelector=!product?null:productYields?<fieldset className="thickness" aria-describedby="coverage-help coverage-error"><legend>{wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'} <span>(mm)</span></legend><div className="thickness-options" style={{gridTemplateColumns:`repeat(${Math.min(5,Object.keys(productYields).length)}, minmax(0, 1fr))`}} role="group" aria-label={wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:product.id==='mortero'?'Espesor de nivelación':'Espesor del acabado'}>{Object.keys(productYields).sort((a,b)=>Number(a)-Number(b)).map(mm=><button type="button" key={mm} aria-label={`${mm} mm`} aria-pressed={thickness===mm} aria-invalid={!!errors.coverage} onClick={()=>{setThickness(mm);reset();}}>{wallProduct||floorProduct?`${mm} mm`:mm}</button>)}</div><p id="coverage-help" className="muted">{thickness?`${coverageDisplay(productYields[thickness],product.id)} m² por ${product.presentation.toLowerCase()}${baseApplication?' y mano':''}`:`Elige un espesor para ver el rendimiento por ${product.presentation.toLowerCase()}.`}</p></fieldset>:product.areaCoverage?<aside className="coverage-reference" id="coverage-help"><h2>Rendimiento Cemix</h2><p><strong>{product.areaCoverage.m2PerContainer} m² por cubeta de 19 L · {product.areaCoverage.coats} manos</strong></p><p>{product.areaCoverage.note}</p></aside>:<label>Rendimiento de ficha técnica (m² por envase)<input aria-label="Rendimiento de ficha técnica (m² por envase)" value={coverage} inputMode="decimal" placeholder="Rendimiento confirmado" aria-invalid={!!errors.coverage} aria-describedby="coverage-help coverage-error" onChange={e=>{setCoverage(e.target.value);reset();}}/><small id="coverage-help">Consulta la ficha técnica para tu aplicación, espesor y número de manos. No tenemos un rendimiento confirmado para este producto.</small></label>;
+ const thicknessLabel=wallProduct?'Espesor de la capa':baseApplication?baseThicknessLabel:floorProduct?'Espesor de nivelación':'Espesor del acabado';
+ const yieldSelector=!product?null:productYields?<fieldset className="thickness" aria-describedby="coverage-help coverage-error"><legend>{thicknessLabel} <span>(mm)</span></legend><div className="thickness-options" style={{gridTemplateColumns:`repeat(${Math.min(5,Object.keys(productYields).length)}, minmax(0, 1fr))`}} role="group" aria-label={thicknessLabel}>{Object.keys(productYields).sort((a,b)=>Number(a)-Number(b)).map(mm=><button type="button" key={mm} aria-label={`${mm} mm`} aria-pressed={thickness===mm} aria-invalid={!!errors.coverage} onClick={()=>{setThickness(mm);reset();}}>{wallProduct||floorProduct?`${mm} mm`:mm}</button>)}</div><p id="coverage-help" className="muted">{thickness?`${coverageDisplay(productYields[thickness],product.id)} m² por ${product.presentation.toLowerCase()}${baseApplication?' y mano':''}`:`Elige un espesor para ver el rendimiento por ${product.presentation.toLowerCase()}.`}</p></fieldset>:product.areaCoverage?<aside className="coverage-reference" id="coverage-help"><h2>Rendimiento Cemix</h2><p><strong>{product.areaCoverage.m2PerContainer} m² por cubeta de 19 L · {product.areaCoverage.coats} manos</strong></p><p>{product.areaCoverage.note}</p></aside>:<label>Rendimiento de ficha técnica (m² por envase)<input aria-label="Rendimiento de ficha técnica (m² por envase)" value={coverage} inputMode="decimal" placeholder="Rendimiento confirmado" aria-invalid={!!errors.coverage} aria-describedby="coverage-help coverage-error" onChange={e=>{setCoverage(e.target.value);reset();}}/><small id="coverage-help">Consulta la ficha técnica para tu aplicación, espesor y número de manos. No tenemos un rendimiento confirmado para este producto.</small></label>;
  const visibleProducts=searchCatalog(search,category);
  const resultProduct=result?products.find(p=>p.id===result.productId):undefined;
  const showingEstimate=view==='estimado'&&!!result&&!!resultProduct;
@@ -249,7 +270,7 @@ export default function App(){
    </>:<>
     {pickingProduct?(work&&<button type="button" className="back-link work-back" onClick={()=>setWork('')}>← Cambiar tipo de trabajo</button>):
      !showingEstimate&&<a className="back-link" href="#catalogo" onClick={e=>{e.preventDefault();navigate('catalogo');}}>← Volver al catálogo</a>}
-    <div className="eyebrow">COTIZADOR</div><h1 ref={heading} tabIndex={-1}>{view==='estimado'&&result?'Tu estimado':product&&!changing?(wallProduct?'Cotiza el acabado de tu muro':floorProduct?'¿Cuánto mide tu piso o losa?':baseFlow?'Mide tu superficie':roofFlow?'¿Cuánto mide tu azotea?':volumeFlow?(product.id==='plastico'?'¿Cuánto necesitas para sellar?':'¿Cuánto necesitas para resanar?'):'Tus medidas'):pickingWork?'¿Qué quieres hacer?':'Elige un material'}</h1>
+    <div className="eyebrow">COTIZADOR</div><h1 ref={heading} tabIndex={-1}>{view==='estimado'&&result?'Tu estimado':product&&!changing?(wallProduct?'Cotiza el acabado de tu muro':floorProduct?'¿Cuánto mide tu piso o losa?':baseFlow?'Mide tu superficie':roofFlow?'¿Cuánto mide tu azotea?':tileProduct?'¿Qué área vas a recubrir?':concreteProduct?'¿Qué vas a colar?':volumeFlow?(product.id==='plastico'?'¿Cuánto necesitas para sellar?':'¿Cuánto necesitas para resanar?'):'Tus medidas'):pickingWork?'¿Qué quieres hacer?':'Elige un material'}</h1>
     {showingEstimate&&result&&resultProduct?<EstimateResult product={resultProduct} result={result} onSave={saveQuoteItem} editingItem={editingItem!==null}/>:<form ref={form} className={roofFlow?`roof-quote-form${baseFlow?' base-cement-form':''}`:wallFlow?`wall-quote-form${wallProduct?' animated-wall-form':''}`:undefined} noValidate onSubmit={e=>{e.preventDefault();calculate();}}>
      {pickingProduct&&<section className={pickingWork?'work-picker':'product-picker'} aria-label={pickingWork?'Elegir tipo de trabajo':'Elegir material'}>
       {pickingWork?<WorkPicker onPick={setWork}/>:<>
@@ -262,7 +283,7 @@ export default function App(){
       <div className={roofFlow?'roof-quote-main':wallFlow?`wall-form-main${wallProduct?' wall-composition':''}`:undefined}>
       <div className="selected-product"><ProductMedia key={product.id} product={product}/><div><h2>{product.name}</h2><p>{product.presentation}</p><p>{product.price===undefined?'Consulta precio':`${money(product.price)} por ${product.unit}`}</p></div><button type="button" className="change-button" onClick={()=>{setChanging(true);reset();}}>Cambiar</button></div>
       {roofFlow?<RoofMeasurements heading={baseFlow?'1. Superficie a impermeabilizar':undefined} surfaces={surfaces} errors={errors} onChange={next=>{setSurfaces(next);reset();}}/>:volumeFlow?<VolumeMeasurements product={product} cracks={cracks} errors={errors} onChange={next=>{setCracks(next);reset();}}/>:product.spot?<div className="spot" role="status"><h2>Veamos el daño de cerca</h2><p>Envía a NAVI una foto y las medidas del daño: largo, ancho y profundidad. Para resanes y sellados puntuales no calculamos la cantidad solo con m².</p><p>Contacta a la tienda por tu canal habitual.</p></div>:<>
-       {wallProduct?<WallMeasurements surfaces={surfaces} errors={errors} onChange={next=>{setSurfaces(next);reset();}}/>:floorProduct?<FloorMeasurements surfaces={surfaces} errors={errors} onChange={next=>{setSurfaces(next);reset();}}/>:<>
+       {wallProduct?<WallMeasurements surfaces={surfaces} errors={errors} onChange={next=>{setSurfaces(next);reset();}}/>:floorProduct||tileProduct||concreteProduct?<FloorMeasurements label={tileProduct?'Superficies que vas a recubrir':concreteProduct?'Superficies del colado':undefined} surfaces={surfaces} errors={errors} onChange={next=>{setSurfaces(next);reset();}}/>:<>
        <h2 className="measure-heading">Superficies de tu obra</h2>
        {surfaces.map((s,i)=><fieldset className="surface" key={i}><legend>Superficie {i+1}</legend><div className="segmented" role="group" aria-label={`Forma de medir superficie ${i+1}`}><button type="button" aria-pressed={s.mode==='area'} onClick={()=>update(i,'mode','area')}>Área en m²</button><button type="button" aria-pressed={s.mode==='dimensions'} onClick={()=>update(i,'mode','dimensions')}>Largo × {dimensionName}</button></div><div className="measurements">{s.mode==='area'?field(i,'area',`Área de superficie ${i+1} (m²)`):<>{field(i,'length',`Largo de superficie ${i+1} (m)`)}{field(i,'side',`${dimensionName==='alto'?'Alto':'Ancho'} de superficie ${i+1} (m)`)}</>}</div>{surfaces.length>1&&<button type="button" className="remove text-button" onClick={()=>{setSurfaces(s=>s.filter((_,j)=>i!==j));reset();}}>Eliminar superficie {i+1}</button>}</fieldset>)}
        <div className="surface-total"><button type="button" className="text-button" onClick={()=>{setSurfaces(s=>[...s,blank()]);reset();}}>＋ Agregar superficie</button><p>Área total <strong>{Number.isFinite(totalArea)?format(totalArea):'—'} m²</strong></p></div>
@@ -276,9 +297,13 @@ export default function App(){
         <p className="method-status" role="status">Método activo: {theoretical?'Estimación teórica · No oficial':'Tabla Cemix'}</p>
        </section>}
        {wallProduct&&<section className="wall-thickness-panel" aria-label="Espesor de la capa"><h2>2. Espesor de la capa</h2><p>Selecciona el espesor del acabado.</p>{yieldSelector}<small id="coverage-error" className="error" role={errors.coverage?'alert':undefined}>{errors.coverage}</small><WallFinishDetail thickness={thickness}/><details className="thickness-help"><summary>No sé qué espesor elegir</summary><p>Confirma el espesor con quien realizará la aplicación y con la ficha técnica del producto. Depende del acabado que necesitas y de las condiciones, irregularidades y preparación del muro. Esta ayuda no selecciona ni recomienda un espesor automáticamente.</p></details></section>}
-       {!floorProduct&&!wallProduct&&yieldSelector}
-       {!wallProduct&&<small id="coverage-error" className="error" role={errors.coverage?'alert':undefined}>{errors.coverage}</small>}
-       {!wallProduct&&!floorProduct&&<><button type="submit" className="primary calculate">Calcular estimado</button><p className="form-note">Envases completos. Estimado sin merma.</p></>}
+       {tileProduct&&productYields&&<TileAdhesiveThickness thickness={thickness} yields={productYields}
+        technical={product.technical} error={errors.coverage} onChange={value=>{setThickness(value);reset();}}/>}
+       {concreteProduct&&<ConcreteMix depth={thickness} dosage={coverage} technical={product.technical} errors={errors}
+        onDepth={value=>{setThickness(value);reset();}} onDosage={value=>{setCoverage(value);reset();}}/>}
+       {!floorProduct&&!wallProduct&&!tileProduct&&!concreteProduct&&yieldSelector}
+       {!wallProduct&&!tileProduct&&!concreteProduct&&<small id="coverage-error" className="error" role={errors.coverage?'alert':undefined}>{errors.coverage}</small>}
+       {!wallFlow&&<><button type="submit" className="primary calculate">Calcular estimado</button><p className="form-note">Envases completos. Estimado sin merma.</p></>}
       </>}
       </div>
       {baseFlow&&baseApplication&&<>
@@ -288,7 +313,9 @@ export default function App(){
        <BaseCementReview surfaces={surfaces} application={baseApplication} thickness={thickness}/>
       </>}
       {roofFlow&&roofCoverage&&<RoofReview product={{...product,areaCoverage:roofCoverage}} surfaces={surfaces} error={errors.coverage}/>}
-      {wallFlow&&<aside className="wall-review" aria-label="Revisa tus datos"><h2>Revisa tus datos</h2><p className="wall-review-product">{product.name}<span>{product.presentation}</span></p><dl><div><dt>{floorProduct?'Superficies':'Muros'}</dt><dd>{surfaces.length}</dd></div><div><dt>Área total</dt><dd>{surfaces.some(s=>surfaceArea(s)!==null)&&Number.isFinite(totalArea)?format(totalArea):'—'} m²</dd></div><div><dt>Espesor</dt><dd>{thickness?`${thickness} mm`:'Por elegir'}</dd></div>{floorProduct&&<div><dt>Método</dt><dd>{theoretical?'Teórico · No oficial':'Tabla Cemix'}</dd></div>}<div><dt>Precio por {product.unit}</dt><dd>{product.price===undefined?'Consulta precio':money(product.price)}</dd></div></dl>{surfaces.some(s=>surfaceArea(s)===null)&&<p className="wall-review-pending">Hay superficies con medidas pendientes o inválidas.</p>}<button type="submit" className="primary calculate">Calcular material y costo</button><p className="form-note">Envases completos · Estimado sin merma</p></aside>}
+      {wallFlow&&tileProduct&&<TileAdhesiveReview surfaces={surfaces} product={product} thickness={thickness} coverage={productYields?.[thickness]}/>}
+      {wallFlow&&concreteProduct&&<ConcreteReview surfaces={surfaces} product={product} depth={thickness} dosage={coverage}/>}
+      {wallFlow&&!tileProduct&&!concreteProduct&&<aside className="wall-review" aria-label="Revisa tus datos"><h2>Revisa tus datos</h2><p className="wall-review-product">{product.name}<span>{product.presentation}</span></p><dl><div><dt>{floorProduct?'Superficies':'Muros'}</dt><dd>{surfaces.length}</dd></div><div><dt>Área total</dt><dd>{surfaces.some(s=>surfaceArea(s)!==null)&&Number.isFinite(totalArea)?format(totalArea):'—'} m²</dd></div><div><dt>Espesor</dt><dd>{thickness?`${thickness} mm`:'Por elegir'}</dd></div>{floorProduct&&<div><dt>Método</dt><dd>{theoretical?'Teórico · No oficial':'Tabla Cemix'}</dd></div>}<div><dt>Precio por {product.unit}</dt><dd>{product.price===undefined?'Consulta precio':money(product.price)}</dd></div></dl>{surfaces.some(s=>surfaceArea(s)===null)&&<p className="wall-review-pending">Hay superficies con medidas pendientes o inválidas.</p>}<button type="submit" className="primary calculate">Calcular material y costo</button><p className="form-note">Envases completos · Estimado sin merma</p></aside>}
      </>}
     </form>}
    </>}

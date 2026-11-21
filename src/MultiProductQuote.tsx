@@ -19,12 +19,15 @@ export function MultiProductQuote({items,onCatalog,onEdit,onRemove}:{
 }){
  const subtotal=items.reduce((sum,{result})=>sum+(result.total??0),0);
  const pending=items.filter(({result})=>result.total===undefined).length;
- const totalLabel=pending?'Subtotal con precios disponibles':'Total estimado';
+ const allPending=pending===items.length;
+ const totalLabel=pending&&!allPending?'Subtotal con precios disponibles':'Total estimado';
+ const total=allPending?'Por confirmar':money(subtotal);
  const lines=items.map(({id,product,result})=>{
-  const size=result.kind==='area'?`${format(result.area)} m²`:`${formatVolume(result.volumeLitres)} L`;
+  const size=result.kind==='area'?`${format(result.area)} m²`:result.kind==='concrete'?`${format(result.volumeM3)} m³ de concreto`:`${formatVolume(result.volumeLitres)} L`;
   const details=[
    size,
-   result.thickness&&`${result.thickness} mm${result.application?' por mano':''}`,
+   result.thickness&&`${result.thickness} ${result.kind==='concrete'?'cm':'mm'}${result.application?' por mano':''}`,
+   result.kind==='concrete'&&result.dosageLabel,
    result.application?.label,
    result.theoretical&&'Cálculo teórico',
   ].filter(Boolean).join(' · ');
@@ -39,7 +42,7 @@ export function MultiProductQuote({items,onCatalog,onEdit,onRemove}:{
   'NAVI · Cotización de materiales sin merma',
   ...lines.map(({product,details,quantity,cost},index)=>
    `${index+1}. ${product.name} · ${product.presentation}\n${details}\n${quantity} · ${cost}`),
-  `${totalLabel}: ${money(subtotal)}`,
+  `${totalLabel}: ${total}`,
   ...(pending?['Quedan materiales por confirmar precio.']:[]),
  ].join('\n\n');
 
@@ -61,7 +64,7 @@ export function MultiProductQuote({items,onCatalog,onEdit,onRemove}:{
    </ul>
    <div className="estimate-card multi-quote-total" aria-live="polite">
     <p>{totalLabel}</p>
-    <strong>{money(subtotal)}</strong>
+    <strong>{total}</strong>
     {pending>0&&<p className="muted">Quedan materiales por confirmar precio.</p>}
    </div>
    <p className="form-note">Estimado sin merma. Confirma precio y disponibilidad con NAVI.</p>

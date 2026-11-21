@@ -263,6 +263,31 @@ footer span { display: block; margin-top: 3px; }
 .mortar-intro {display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:8px}
 .mortar-intro>p {font-weight:700;margin:0 0 12px}
 .floor-thickness h2 {font-size:22px}
+.quote-material-panel { margin-block: 20px; }
+.tile-yield-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.tile-yield-options button {
+ display: grid;
+ gap: 3px;
+ padding: 12px 8px;
+ border: 1px solid #718272;
+ border-radius: 9px;
+ background: #263129;
+}
+.tile-yield-options button:hover { border-color: var(--lime); }
+.tile-yield-options button[aria-pressed=true] { background: var(--lime); color: #14200e; border-color: var(--lime); }
+.tile-yield-options strong { font-size: 1.25rem; }
+.tile-yield-options span { font-size: .9375rem; }
+.quote-material-panel .thickness-help { margin-bottom: 0; }
+.quote-material-panel .error { margin: 8px 0 0; }
+.quote-preview {
+ margin-block: 12px 0;
+ padding: 12px;
+ border: 1px solid #576658;
+ border-radius: 8px;
+ background: #2c372e;
+}
+.quote-preview p { margin: 0; font-weight: 700; }
+.quote-preview strong { color: var(--lime); font-size: 1.5rem; overflow-wrap: anywhere; }
 .method-status {font-weight:700;color:#B8F55E}
 @media(min-width:600px){.mortar-intro {grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
 

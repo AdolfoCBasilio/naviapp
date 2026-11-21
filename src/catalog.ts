@@ -1,5 +1,5 @@
-export const categories = ['Muros y acabados','Pisos','Resanes','Impermeabilización'] as const;
-export type Product = {id:string; name:string; presentation:string; category:typeof categories[number]; use:string; price?:number; quotable?:boolean; unit:string; plural:string; work:string; image?:string; imageScale?:number; imageNote?:string; volumeYieldLitres?:number; areaCoverage?:{m2PerContainer:number;coats:number;note:string}; spot?:boolean};
+export const categories = ['Muros y acabados','Pisos','Resanes','Impermeabilización','Construcción'] as const;
+export type Product = {id:string; name:string; presentation:string; category:typeof categories[number]; use:string; price?:number; quotable?:boolean; unit:string; plural:string; work:string; image?:string; imageScale?:number; imageNote?:string; volumeYieldLitres?:number; areaCoverage?:{m2PerContainer:number;coats:number;note:string}; spot?:boolean; technical?:{sheet:string; note:string; manufacturer?:string}};
 // imageScale compensa los márgenes blancos de cada foto para que el empaque
 // ocupe aproximadamente el 80% del recuadro, sin deformarlo ni recortarlo.
 export const products: Product[] = [
@@ -8,11 +8,30 @@ export const products: Product[] = [
  {id:'yeso',quotable:false,imageScale:0.86,image:'/images/yesodeaxochiapan.png',name:'Yeso de Axochiapan',presentation:'Bulto de 25 kg',category:'Muros y acabados',use:'Para acabados interiores de yeso.',price:148,unit:'bulto',plural:'bultos',work:'otros'},
  {id:'blanco',quotable:false,imageScale:0.87,image:'/images/blancoespana.png',name:'Blanco de España',presentation:'Bulto de 20 kg',category:'Muros y acabados',use:'Para preparar pastas y acabados; confirma su aplicación con NAVI.',price:130,unit:'bulto',plural:'bultos',work:'otros'},
  {id:'mortero',imageScale:0.94,image:"/images/morteronivelador.jpeg",name:'Mortero Nivelador Cemix',presentation:'Bulto de 25 kg',category:'Pisos',use:'Para nivelar un piso.',price:200,unit:'bulto',plural:'bultos',work:'piso'},
+ {
+  id:'psp',name:'PSP+ Porcelánico Cemix',presentation:'Bulto de 20 kg',image:'/images/psp-porcelanico.jpg',
+  category:'Pisos',price:340,unit:'bulto',plural:'bultos',work:'revestimientos',
+  use:'Para pegar porcelanato, cerámica y piedra natural en pisos y muros. También permite instalar piso sobre piso en interiores.',
+  technical:{
+   sheet:'https://www.cemix.com/wp-content/uploads/2026/09/FT-PSP.pdf',
+   note:'Usa el espesor del adhesivo después de colocar la pieza. Para piso sobre piso, Cemix indica un máximo de 7 mm. El consumo puede variar con la superficie, la llana y la aplicación de adhesivo al reverso.',
+  },
+ },
  {id:'resanador',imageScale:0.96,image:"/images/resanadordegrietas.jpeg",name:'Resanador de Grietas Cemix',presentation:'Bolsa de 2 kg',category:'Resanes',use:'Para resanes puntuales de grietas.',price:145,unit:'bolsa',plural:'bolsas',work:'resanes',volumeYieldLitres:1},
  {id:'plastico',imageScale:0.84,image:"/images/impercoolcementoplastico.webp",name:'Impercool Cemento Plástico',presentation:'Cubeta de 1 galón',category:'Resanes',use:'Para sellados puntuales en azoteas.',price:350,unit:'cubeta',plural:'cubetas',work:'sellados',volumeYieldLitres:3.78},
  {id:'cinco',imageScale:0.99,image:"/images/impercool5anos.jpeg",name:'Impercool 5 años',presentation:'Cubeta de 19 L',category:'Impermeabilización',use:'Para impermeabilizar una azotea.',price:1300,areaCoverage:{m2PerContainer:19,coats:2,note:'Rendimiento aproximado de Cemix para el sistema a dos manos. Ingresa el área una sola vez: las dos manos ya están contempladas. El consumo puede variar según la superficie y la aplicación.'},unit:'cubeta',plural:'cubetas',work:'azotea'},
  {id:'siete',imageScale:0.99,image:"/images/impercool7anos.jpeg",name:'Impercool 7 años',presentation:'Cubeta de 19 L',category:'Impermeabilización',use:'Para impermeabilizar una azotea.',price:1600,areaCoverage:{m2PerContainer:19,coats:2,note:'Rendimiento aproximado de Cemix para el sistema a dos manos. Ingresa el área una sola vez: las dos manos ya están contempladas. El consumo puede variar según la superficie y la aplicación.'},unit:'cubeta',plural:'cubetas',work:'azotea'},
  {id:'diez',imageScale:0.91,image:"/images/impercoolbasecemento10anos.jpeg",name:'Impercool Base Cemento 10 años',presentation:'Bulto de 10 kg',category:'Impermeabilización',use:'Para impermeabilizar con base cemento.',price:1100,unit:'bulto',plural:'bultos',work:'azotea'},
+ {
+  id:'moctezuma',name:'Cemento Gris Moctezuma CPC 30 R RS',presentation:'Bulto de 25 kg',
+  image:'/images/cemento-moctezuma-25kg.webp',category:'Construcción',price:120,unit:'bulto',plural:'bultos',work:'colado',
+  use:'Cemento Portland compuesto de resistencia inicial rápida y resistente a sulfatos, para preparar concreto en pisos, losas y otros colados.',
+  technical:{
+   manufacturer:'Moctezuma',
+   sheet:'https://s2c57e1e8a048a550.jimcontent.com/download/version/1579285233/module/8968027869/name/CPC30RS.pdf',
+   note:'Estimación de cemento sin merma, basada en la tabla de Moctezuma. El concreto también requiere agua, arena y grava. Para elementos estructurales, usa la dosificación indicada por el responsable de la obra.',
+  },
+ },
 ];
 export const thicknessYields: Record<string,number> = {'3':9.4,'4':7.1,'5':5.7,'6':4.7,'7':4.0};
 
@@ -29,6 +48,7 @@ export const thicknessYieldsByProduct: Partial<Record<string,Record<string,numbe
  constructor: thicknessYields,
  plus: plusThicknessYields,
  mortero: morteroThicknessYields,
+ psp: {'5':3.1,'7':2.3,'9':1.7,'12':1.3},
 };
 
 // Extrapolación lineal de consumo: rendimiento a t mm = 1.33 × 10 / t.
@@ -82,3 +102,13 @@ export const baseCementoApplications = {
  },
 };
 export type BaseCementoUse=keyof typeof baseCementoApplications;
+
+// The CPC 30 R RS sheet uses 5–9 batches with one 50 kg sack per m³.
+// Each batch corresponds to two of NAVI's 25 kg bags.
+export const concreteDosages=[
+ {label:'Muros y pisos',strength:100,bags:10},
+ {label:'Trabes, castillos y dalas',strength:150,bags:12},
+ {label:'Losas y zapatas',strength:200,bags:14},
+ {label:'Columnas y losas especiales',strength:250,bags:16},
+ {label:'Alta resistencia',strength:300,bags:18},
+];

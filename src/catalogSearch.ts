@@ -4,8 +4,10 @@ const workTerms:Record<string,string>={
  block:'aplanar aplanado repellar repello repellado aplanados paredes barda bloques muro block',
  concreto:'recubrir recubrimiento aplanar aplanado hormigón concreto liso',
  piso:'nivelar nivelación emparejar alisar firme piso pisos suelo losa desnivel',
+ revestimientos:'adhesivo pegamento pega pegar instalar colocar loseta azulejo porcelanato porcelanico ceramica revestimiento recubrimiento granito marmol cantera',
  azotea:'impermeabilizar impermeabilizante impermeabilizantes gotera goteras filtración filtraciones reparar techo techos azotea azoteas',
  resanes:'resanar resane reparar reparación rellenar tapar grieta grietas fisura fisuras rajadura rajaduras',
+ colado:'colado colar preparar concreto cemento cimentación firme castillo dala losa zapata columna trabe',
  sellados:'sellar sellador sellado tapar reparar gotera goteras filtración filtraciones techo techos azotea azoteas',
 };
 

@@ -1,5 +1,5 @@
 import {useId,useLayoutEffect,useRef} from 'react';
-import {baseCementoApplications,thicknessYieldsByProduct,type Product} from './catalog';
+import {baseCementoApplications,concreteDosages,thicknessYieldsByProduct,type Product} from './catalog';
 import {money} from './calculate';
 import {whatsappMessageUrl} from './contact';
 import {WhatsAppIcon} from './HeaderContact';
@@ -7,6 +7,7 @@ import {ProductMedia} from './ProductMedia';
 import {format} from './quoteResult';
 
 function productYield(product:Product){
+ if(product.id==='moctezuma')return `De ${concreteDosages[0].bags} a ${concreteDosages[concreteDosages.length-1].bags} bultos de 25 kg por m³ de concreto, según la mezcla.`;
  const area=product.areaCoverage;
  if(area)return `Aprox. ${format(area.m2PerContainer)} m² por ${product.unit} con ${area.coats} manos.`;
 
@@ -69,6 +70,7 @@ export function ProductDetails({product,onClose,onQuote}:{
      <div><dt>Para qué sirve</dt><dd>{product.use}</dd></div>
      <div><dt>Rendimiento</dt><dd>{productYield(product)}</dd></div>
     </dl>
+    {product.technical&&<a className="text-button" href={product.technical.sheet} target="_blank" rel="noopener noreferrer">Ver ficha técnica de {product.technical.manufacturer??'Cemix'}</a>}
    </div>
    <div className="product-details-actions">
     {product.quotable!==false&&<button type="button" className="primary" onClick={()=>onQuote(product.id)}>Cotizar material</button>}

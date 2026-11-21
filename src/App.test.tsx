@@ -14,9 +14,11 @@ const workLabels:Record<string,string>={
  block:'Dar acabado a un muro de block',
  concreto:'Recubrir concreto liso',
  piso:'Nivelar un piso o losa',
+ revestimientos:'Pegar porcelanato o loseta',
  azotea:'Impermeabilizar una azotea',
  resanes:'Resanar grietas',
  sellados:'Hacer sellados puntuales',
+ colado:'Preparar concreto para un colado',
 };
 async function pickWork(user:ReturnType<typeof userEvent.setup>,work:string){
  const back=screen.queryByRole('button',{name:/Cambiar tipo de trabajo/});
@@ -26,7 +28,8 @@ async function pickWork(user:ReturnType<typeof userEvent.setup>,work:string){
 async function openWork(user:ReturnType<typeof userEvent.setup>,work:string){
  await user.click(screen.getByRole('navigation',{name:'Navegación móvil'}).querySelector('a[href="#cotizador"]')!);
  await pickWork(user,work);
- await user.click(screen.getByRole('button',{name:new RegExp(products.find(p=>p.work===work)!.name)}));
+ const product=products.find(p=>p.work===work)!;
+ await user.click(screen.getByRole('button',{name:name=>name.includes(product.name)}));
  if(products.find(p=>p.work===work)?.category==='Muros y acabados')await user.click(screen.getByRole('button',{name:'Ya sé los m²'}));
 }
 const calculateButton=()=>screen.getByRole('button',{name:/^Calcular (estimado|material y costo|bolsas y costo|cubetas y costo|bultos y costo)$/});
@@ -112,7 +115,7 @@ function expectWhatsAppQuote(summary:unknown){
 }
 
 describe('Tipos de trabajo del cotizador',()=>{
- it('muestra las seis opciones en orden, abre sus materiales y permite volver a Inicio',async()=>{
+ it('muestra las ocho opciones en orden, abre sus materiales y permite volver a Inicio',async()=>{
   window.history.replaceState(null,'','/#cotizador');
   const user=userEvent.setup();render(<App/>);
   const list=screen.getByRole('list',{name:'Tipos de trabajo'});
@@ -125,7 +128,7 @@ describe('Tipos de trabajo del cotizador',()=>{
    const shown=within(screen.getByRole('region',{name:'Elegir material'}));
    const expected=products.filter(product=>product.work===work&&product.quotable!==false);
    expect(shown.getAllByRole('button')).toHaveLength(expected.length);
-   for(const product of expected)expect(shown.getByRole('button',{name:new RegExp(product.name)})).toBeVisible();
+   for(const product of expected)expect(shown.getByRole('button',{name:name=>name.includes(product.name)})).toBeVisible();
    await user.click(screen.getByRole('button',{name:/Cambiar tipo de trabajo/}));
   }
   await user.click(screen.getByRole('link',{name:/Inicio/}));
@@ -172,10 +175,73 @@ describe('Navegación y cotización',()=>{
   ['¿Cómo reparar una gotera en mi techo?',['plastico','cinco','siete','diez']],
   ['resanar grieta',['resanador']],
   ['nivelación de piso',['mortero']],
+  ['pegar porcelanato',['psp']],
+  ['preparar concreto para un colado',['moctezuma']],
  ])('encuentra materiales para «%s» desde el catálogo',async(query,ids)=>{
   const user=userEvent.setup();render(<App/>);
   await user.type(screen.getByRole('searchbox',{name:'Buscar por producto o trabajo'}),query);
   expect(screen.getAllByRole('article').map(item=>item.dataset.productId)).toEqual(ids);
+ });
+
+ it('cotiza el cemento de 25 kg por volumen y recupera la mezcla al editar',async()=>{
+  const user=userEvent.setup();const app=render(<App/>);
+  await user.click(screen.getByRole('button',{name:'Construcción'}));
+  expect(screen.getAllByRole('article')).toEqual([card('moctezuma')]);
+  expect(within(card('moctezuma')).getByText('$120 MXN')).toBeVisible();
+  await openCard(user,'moctezuma');
+  await user.click(screen.getByRole('button',{name:'Ya sé los m²'}));
+  await user.type(areaInput(),'10');
+  await user.type(screen.getByLabelText('Espesor del colado (cm)'),'10');
+  await user.selectOptions(screen.getByRole('combobox',{name:'Tipo de mezcla'}),'14');
+  const review=within(screen.getByRole('complementary',{name:'3. Revisa tu estimado'}));
+  expect(review.getByText('1 m³')).toBeVisible();
+  expect(review.getByText('14 bultos completos')).toBeVisible();
+  expect(review.getByText('$1,680 MXN')).toBeVisible();
+  await user.click(review.getByRole('button',{name:'Ver estimado'}));
+  expect(screen.getByText('$1,680 MXN',{selector:'.result-total'})).toBeVisible();
+  const url=new URL(screen.getByRole('link',{name:'Enviar por WhatsApp'}).getAttribute('href')!);
+  expect(url.searchParams.get('text')).toContain('Dosificación: 14 bultos por m³');
+  await user.click(screen.getByRole('button',{name:'Añadir a mi cotización'}));
+  app.unmount();render(<App/>);
+  expect(screen.getByText(/1 m³ de concreto · 10 cm/)).toBeVisible();
+  await user.click(screen.getByRole('button',{name:/Editar Cemento Gris Moctezuma/}));
+  expect(areaInput()).toHaveValue('10');
+  expect(screen.getByLabelText('Espesor del colado (cm)')).toHaveValue('10');
+  expect(screen.getByRole('combobox',{name:'Tipo de mezcla'})).toHaveValue('14');
+ });
+
+ it('cotiza PSP+ con la tabla Cemix y guarda la cantidad y el costo',async()=>{
+  const user=userEvent.setup();
+  const app=render(<App/>);
+  expect(within(card('psp')).getByText('$340 MXN')).toBeVisible();
+  await openWork(user,'revestimientos');
+  const options=within(screen.getByRole('group',{name:'Espesor del adhesivo'}));
+  expect(options.getAllByRole('button').map(button=>button.getAttribute('aria-label'))).toEqual(['5 mm','7 mm','9 mm','12 mm']);
+  expect(options.getByRole('button',{name:'7 mm'})).toHaveAccessibleDescription('2.3 m² por bulto');
+  await user.click(screen.getByText('Cómo elegir el espesor'));
+  expect(screen.getByRole('link',{name:'Ver ficha técnica de Cemix'})).toHaveAttribute('href','https://www.cemix.com/wp-content/uploads/2026/09/FT-PSP.pdf');
+  await user.click(screen.getByRole('button',{name:'Ya sé los m²'}));
+  await user.type(areaInput(),'6.9');
+  const review=within(screen.getByRole('complementary',{name:'3. Revisa tu estimado'}));
+  await user.click(options.getByRole('button',{name:'9 mm'}));
+  expect(review.getByText('$1,700 MXN')).toBeVisible();
+  await user.click(options.getByRole('button',{name:'7 mm'}));
+  expect(review.getByText('3 bultos completos')).toBeVisible();
+  expect(review.getByText('$1,020 MXN')).toBeVisible();
+  await user.click(review.getByRole('button',{name:'Ver estimado'}));
+  expect(screen.getByText('3 bultos completos')).toBeVisible();
+  expect(screen.getByText('$1,020 MXN',{selector:'.result-total'})).toBeVisible();
+  const individual=new URL(screen.getByRole('link',{name:'Enviar por WhatsApp'}).getAttribute('href')!);
+  expect(individual.searchParams.get('text')).toContain('Rendimiento: 2.3 m² por envase');
+  await user.click(screen.getByRole('button',{name:'Añadir a mi cotización'}));
+  app.unmount();
+  render(<App/>);
+  expect(screen.getByText('3 bultos completos')).toBeVisible();
+  const combined=new URL(screen.getByRole('link',{name:'Enviar cotización por WhatsApp'}).getAttribute('href')!);
+  expect(combined.searchParams.get('text')).toContain('Total estimado: $1,020 MXN');
+  await user.click(screen.getByRole('button',{name:/Editar PSP/}));
+  expect(areaInput()).toHaveValue('6.9');
+  expect(screen.getByRole('button',{name:'7 mm'})).toHaveAttribute('aria-pressed','true');
  });
 
  it('recupera las medidas, el estimado y la lista después de recargar',async()=>{
@@ -260,7 +326,7 @@ describe('Navegación y cotización',()=>{
   const user=userEvent.setup();render(<App/>);
   for(const product of products.filter(p=>p.quotable!==false)){
    await openCard(user,product.id);
-   expect(screen.getByRole('heading',{level:1,name:product.category==='Muros y acabados'?'Cotiza el acabado de tu muro':product.id==='mortero'?'¿Cuánto mide tu piso o losa?':product.id==='diez'?'Mide tu superficie':product.work==='azotea'&&product.areaCoverage?'¿Cuánto mide tu azotea?':product.id==='resanador'?'¿Cuánto necesitas para resanar?':product.id==='plastico'?'¿Cuánto necesitas para sellar?':'Tus medidas'})).toBeVisible();
+   expect(screen.getByRole('heading',{level:1,name:product.category==='Muros y acabados'?'Cotiza el acabado de tu muro':product.id==='mortero'?'¿Cuánto mide tu piso o losa?':product.id==='psp'?'¿Qué área vas a recubrir?':product.id==='moctezuma'?'¿Qué vas a colar?':product.id==='diez'?'Mide tu superficie':product.work==='azotea'&&product.areaCoverage?'¿Cuánto mide tu azotea?':product.id==='resanador'?'¿Cuánto necesitas para resanar?':product.id==='plastico'?'¿Cuánto necesitas para sellar?':'Tus medidas'})).toBeVisible();
    expect(screen.getByRole('heading',{level:2,name:product.name})).toBeVisible();
    expect(screen.queryByRole('list',{name:'Tipos de trabajo'})).not.toBeInTheDocument();
    await user.click(screen.getByRole('link',{name:/Volver al catálogo/}));
@@ -390,11 +456,12 @@ describe('Navegación y cotización',()=>{
  it('muestra todas las categorías sin desplegable y permite elegir con teclado',async()=>{
   const user=userEvent.setup();render(<App/>);
   expect(screen.queryByRole('button',{name:/Filtros/})).not.toBeInTheDocument();
-  const group=screen.getByRole('group',{name:'Categorías rápidas'});expect(within(group).getAllByRole('button')).toHaveLength(5);
+  const group=screen.getByRole('group',{name:'Categorías rápidas'});
+  expect(within(group).getAllByRole('button').map(button=>button.textContent)).toEqual(['Todas','Muros','Pisos','Resanes','Impermeabilización','Construcción']);
   within(group).getByRole('button',{name:'Impermeabilización'}).focus();await user.keyboard('{Enter}');expect(screen.getAllByRole('article')).toHaveLength(3);expect(within(group).getByRole('button',{name:'Impermeabilización'})).toHaveAttribute('aria-pressed','true');
  });
  it('las categorías rápidas combinan su filtro con la búsqueda',async()=>{
-  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por producto o trabajo'),'Cemix');await user.click(screen.getByRole('button',{name:'Muros'}));expect(screen.getAllByRole('article')).toHaveLength(2);await user.click(screen.getByRole('button',{name:'Pisos'}));expect(screen.getAllByRole('article')).toHaveLength(1);expect(card('mortero')).toBeVisible();await user.click(screen.getByRole('button',{name:'Todas'}));expect(screen.getAllByRole('article')).toHaveLength(4);
+  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por producto o trabajo'),'Cemix');await user.click(screen.getByRole('button',{name:'Muros'}));expect(screen.getAllByRole('article')).toHaveLength(2);await user.click(screen.getByRole('button',{name:'Pisos'}));expect(screen.getAllByRole('article')).toHaveLength(2);expect(card('mortero')).toBeVisible();expect(card('psp')).toBeVisible();await user.click(screen.getByRole('button',{name:'Todas'}));expect(screen.getAllByRole('article')).toHaveLength(5);
  });
  it.each(Object.entries(plusThicknessYields))('Adeblok Plus a %s mm usa %s m² por bulto de 40 kg',async(mm,yieldValue)=>{
   const user=userEvent.setup();render(<App/>);await openCard(user,'plus');

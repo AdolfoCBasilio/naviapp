@@ -148,7 +148,7 @@ describe('Navegación y cotización',()=>{
    expect(details.getByText(product.use)).toBeVisible();
    if(product.id==='constructor')expect(details.getByText(/9[.,]4 m² por bulto a 3 mm/)).toBeVisible();
    if(product.id==='yeso')expect(details.getByText('Consulta el rendimiento con NAVI.')).toBeVisible();
-   const link=details.getByRole('link',{name:'Consultar disponibilidad por WhatsApp'});
+   const link=details.getByRole('link',{name:'Disponibilidad por WhatsApp'});
    const url=new URL(link.getAttribute('href')!);
    expect(url.pathname).toBe('/522321125107');
    expect(url.searchParams.get('text')).toBe(`Hola, NAVI. ¿Tienen disponible ${product.name} (${product.presentation})?`);
@@ -156,6 +156,16 @@ describe('Navegación y cotización',()=>{
    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
    expect(trigger).toHaveFocus();
   }
+  const trigger=within(card('constructor')).getByRole('button',{name:'Adeblok Constructor Cemix'});
+  await user.click(trigger);
+  expect(within(modal).getByText('$250 MXN')).toBeVisible();
+  await user.click(modal);
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+  await user.click(trigger);
+  await user.click(within(modal).getByRole('button',{name:'Cotizar material'}));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Cotiza el acabado de tu muro'})).toHaveFocus();
  });
 
  it.each([

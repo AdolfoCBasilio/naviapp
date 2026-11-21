@@ -241,7 +241,7 @@ export default function App(){
       <div className="product-footer"><strong>{p.price===undefined?'Consulta precio':money(p.price)}</strong>{p.quotable!==false&&<a className="quote-link" href="#cotizador" onClick={e=>{e.preventDefault();startQuote(p.id);}}>Cotizar</a>}</div>
      </div>
     </article>)}</div>
-    <ProductDetails product={detailsProduct} onClose={()=>{setDetailsProduct(null);detailsTrigger.current?.focus();}}/>
+    <ProductDetails product={detailsProduct} onQuote={startQuote} onClose={()=>{setDetailsProduct(null);detailsTrigger.current?.focus();}}/>
     {!visibleProducts.length&&<div className="empty-state" role="status"><h2>No encontramos productos</h2><p>Prueba con «gotera», «grieta» o «nivelar piso», o elige Todas las categorías.</p><button className="secondary" onClick={()=>{setSearch('');setCategory('Todas');}}>Mostrar todos</button></div>}
    </>:view==='cotizacion'?<>
     <h1 ref={heading} tabIndex={-1}>Mi cotización</h1>

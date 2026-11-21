@@ -192,8 +192,12 @@ describe('Navegación y cotización',()=>{
   await user.click(screen.getByRole('button',{name:'Ya sé los m²'}));
   await user.type(areaInput(),'10');
   await user.type(screen.getByLabelText('Espesor del colado (cm)'),'10');
-  await user.selectOptions(screen.getByRole('combobox',{name:'Tipo de mezcla'}),'14');
   const review=within(screen.getByRole('complementary',{name:'3. Revisa tu estimado'}));
+  const choices=within(screen.getByRole('group',{name:'Tipo de mezcla'}));
+  await user.click(choices.getByRole('radio',{name:'Muros y pisos'}));
+  expect(review.getByText('$1,200 MXN')).toBeVisible();
+  await user.click(choices.getByRole('radio',{name:'Losas y zapatas'}));
+  expect(choices.getByRole('radio',{name:'Losas y zapatas'})).toBeChecked();
   expect(review.getByText('1 m³')).toBeVisible();
   expect(review.getByText('14 bultos completos')).toBeVisible();
   expect(review.getByText('$1,680 MXN')).toBeVisible();
@@ -207,7 +211,7 @@ describe('Navegación y cotización',()=>{
   await user.click(screen.getByRole('button',{name:/Editar Cemento Gris Moctezuma/}));
   expect(areaInput()).toHaveValue('10');
   expect(screen.getByLabelText('Espesor del colado (cm)')).toHaveValue('10');
-  expect(screen.getByRole('combobox',{name:'Tipo de mezcla'})).toHaveValue('14');
+  expect(screen.getByRole('radio',{name:'Losas y zapatas'})).toBeChecked();
  });
 
  it('cotiza PSP+ con la tabla Cemix y guarda la cantidad y el costo',async()=>{

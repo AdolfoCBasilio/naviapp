@@ -279,6 +279,41 @@ footer span { display: block; margin-top: 3px; }
 .tile-yield-options span { font-size: .9375rem; }
 .quote-material-panel .thickness-help { margin-bottom: 0; }
 .quote-material-panel .error { margin: 8px 0 0; }
+.concrete-mixes { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.concrete-mixes legend { font-size: 1.125rem; font-weight: 750; }
+.concrete-mixes > p { margin: 5px 0 12px; font-size: .9375rem; }
+.concrete-mix-options { display: grid; gap: 8px; }
+.concrete-mix-option {
+ display: grid;
+ grid-template-columns: auto minmax(0,1fr);
+ align-items: center;
+ gap: 12px;
+ min-height: 64px;
+ margin: 0;
+ padding: 11px 12px;
+ border: 1px solid #667a68;
+ border-radius: 9px;
+ background: #263129;
+ cursor: pointer;
+}
+.concrete-mix-option:hover { border-color: var(--lime); }
+.concrete-mix-option:has(:checked) { border-color: var(--lime); background: #303f26; }
+.concrete-mix-option:has(:focus-visible) { outline: 3px solid var(--lime); outline-offset: 3px; }
+.concrete-mix-option input {
+ width: 20px;
+ height: 20px;
+ min-height: 0;
+ margin: 0;
+ padding: 0;
+ accent-color: var(--lime);
+}
+.concrete-mix-option input:focus-visible { outline: none; }
+.concrete-mix-option strong { font-size: 1rem; line-height: 1.25; }
+.concrete-mix-option:has(:checked) strong { color: var(--lime); }
+.concrete-mix-details { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 3px; color: #e4ebe2; font-size: .875rem; }
+@media (min-width: 1024px) {
+ .concrete-mix-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 .quote-preview {
  margin-block: 12px 0;
  padding: 12px;

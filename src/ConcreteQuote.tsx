@@ -20,15 +20,25 @@ export function ConcreteMix({depth,dosage,technical,errors,onDepth,onDosage}:{
     aria-invalid={!!errors.depth} aria-describedby={errors.depth?'concrete-depth-error':undefined}/>
    {errors.depth&&<small id="concrete-depth-error" className="error">{errors.depth}</small>}
   </label>
-  <label htmlFor="concrete-mix">Tipo de mezcla
-   <select id="concrete-mix" value={dosage} onChange={event=>onDosage(event.target.value)}
-    aria-invalid={!!errors.coverage} aria-describedby={errors.coverage?'concrete-mix-error':undefined}>
-    <option value="">Elige el uso indicado para tu obra</option>
-    {concreteDosages.map(({label,strength,bags})=><option key={bags} value={bags}>{label} · {strength} kg/cm²</option>)}
-   </select>
-   {errors.coverage&&<small id="concrete-mix-error" className="error">{errors.coverage}</small>}
-  </label>
-  <p className="muted">{dosage?`Referencia: ${dosage} bultos de 25 kg por m³ de concreto.`:'Usa el tipo de mezcla indicado para tu obra.'}</p>
+  <fieldset className="concrete-mixes" aria-describedby="concrete-mix-help">
+   <legend>Tipo de mezcla</legend>
+   <p id="concrete-mix-help" className="muted">Selecciona la mezcla indicada para tu obra. Cada opción muestra cuántos bultos de 25 kg se estiman por m³.</p>
+   <div className="concrete-mix-options">
+    {concreteDosages.map(({label,strength,bags})=><label key={bags} className="concrete-mix-option">
+     <input type="radio" name="concrete-mix" value={bags} checked={dosage===String(bags)}
+      onChange={event=>onDosage(event.target.value)} aria-labelledby={`concrete-mix-label-${bags}`}
+      aria-invalid={!!errors.coverage}
+      aria-describedby={`concrete-mix-details-${bags}${errors.coverage?' concrete-mix-error':''}`}/>
+     <span>
+      <strong id={`concrete-mix-label-${bags}`}>{label}</strong>
+      <span className="concrete-mix-details" id={`concrete-mix-details-${bags}`}>
+       <span>{strength} kg/cm²</span><span>{bags} bultos/m³</span>
+      </span>
+     </span>
+    </label>)}
+   </div>
+   {errors.coverage&&<p id="concrete-mix-error" className="error" role="alert">{errors.coverage}</p>}
+  </fieldset>
   {technical&&<details className="thickness-help">
    <summary>De dónde sale la estimación</summary>
    <p>{technical.note}</p>

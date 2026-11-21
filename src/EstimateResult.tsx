@@ -27,7 +27,9 @@ const directionsAction={
  url:mapsUrl,
 };
 
-export function EstimateResult({result,product}:{result:QuoteResult;product:Product}){
+export function EstimateResult({result,product,onSave,editingItem}:{
+ result:QuoteResult;product:Product;onSave:()=>void;editingItem:boolean;
+}){
  const [showDirections,setShowDirections]=useState(false);
  const directionsButton=useRef<HTMLButtonElement>(null);
  const [copyStatus,setCopyStatus]=useState<'copied'|'failed'>();
@@ -91,7 +93,10 @@ export function EstimateResult({result,product}:{result:QuoteResult;product:Prod
    </dl>
    <p className="muted">{volume&&'Se suman los volúmenes rectangulares: largo (m) × ancho (mm) × profundidad (mm) ÷ 1,000 = litros. '}Confirma precio y disponibilidad con NAVI antes de comprar. Las condiciones de la superficie pueden cambiar el consumo.</p>
   </details>
-  <a className="primary estimate-whatsapp" href={whatsappMessageUrl(result.summary)} target="_blank" rel="noopener noreferrer">
+  <button type="button" className="primary multi-quote-link" onClick={onSave}>
+   {editingItem?'Guardar cambios en mi cotización':'Añadir a mi cotización'}
+  </button>
+  <a className="secondary estimate-whatsapp" href={whatsappMessageUrl(result.summary)} target="_blank" rel="noopener noreferrer">
    <WhatsAppIcon/><span>Enviar por WhatsApp</span>
   </a>
   <div className="estimate-secondary-actions">

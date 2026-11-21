@@ -4,7 +4,7 @@ import {beforeEach,describe,it,expect,vi} from 'vitest';
 import App from './App';
 import {products,thicknessYields,plusThicknessYields,morteroThicknessYields} from './catalog';
 
-beforeEach(()=>{vi.restoreAllMocks();window.history.replaceState(null,'','#catalogo');Element.prototype.scrollTo=vi.fn(function(this:Element,options?:ScrollToOptions|number){if(options&&typeof options==='object')this.scrollTop=options.top ?? 0;});});
+beforeEach(()=>{vi.restoreAllMocks();window.localStorage.clear();window.history.replaceState(null,'','#catalogo');Element.prototype.scrollTo=vi.fn(function(this:Element,options?:ScrollToOptions|number){if(options&&typeof options==='object')this.scrollTop=options.top ?? 0;});});
 const card=(id:string)=>screen.getAllByRole('article').find(c=>c.dataset.productId===id)!;
 async function openCard(user:ReturnType<typeof userEvent.setup>,id='constructor'){
  await user.click(within(card(id)).getByRole('link',{name:'Cotizar'}));
@@ -135,6 +135,117 @@ describe('Tipos de trabajo del cotizador',()=>{
 });
 
 describe('Navegación y cotización',()=>{
+ it('abre la ficha de cada producto y prepara una consulta de disponibilidad en WhatsApp',async()=>{
+  const user=userEvent.setup();render(<App/>);
+  const modal=screen.getByRole('main').querySelector('dialog')!;
+  if(!modal.showModal)modal.showModal=()=>{modal.open=true;};
+  if(!modal.close)modal.close=()=>{modal.open=false;modal.dispatchEvent(new Event('close'));};
+  for(const product of products){
+   const trigger=within(card(product.id)).getByRole('button',{name:product.name});
+   await user.click(trigger);
+   const details=within(screen.getByRole('dialog',{name:product.name}));
+   expect(details.getByText(product.presentation)).toBeVisible();
+   expect(details.getByText(product.use)).toBeVisible();
+   if(product.id==='constructor')expect(details.getByText(/9[.,]4 m² por bulto a 3 mm/)).toBeVisible();
+   if(product.id==='yeso')expect(details.getByText('Consulta el rendimiento con NAVI.')).toBeVisible();
+   const link=details.getByRole('link',{name:'Consultar disponibilidad por WhatsApp'});
+   const url=new URL(link.getAttribute('href')!);
+   expect(url.pathname).toBe('/522321125107');
+   expect(url.searchParams.get('text')).toBe(`Hola, NAVI. ¿Tienen disponible ${product.name} (${product.presentation})?`);
+   await user.click(details.getByRole('button',{name:'Cerrar'}));
+   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+   expect(trigger).toHaveFocus();
+  }
+ });
+
+ it.each([
+  ['¿Cómo reparar una gotera en mi techo?',['plastico','cinco','siete','diez']],
+  ['resanar grieta',['resanador']],
+  ['nivelación de piso',['mortero']],
+ ])('encuentra materiales para «%s» desde el catálogo',async(query,ids)=>{
+  const user=userEvent.setup();render(<App/>);
+  await user.type(screen.getByRole('searchbox',{name:'Buscar por producto o trabajo'}),query);
+  expect(screen.getAllByRole('article').map(item=>item.dataset.productId)).toEqual(ids);
+ });
+
+ it('recupera las medidas, el estimado y la lista después de recargar',async()=>{
+  const user=userEvent.setup();
+  let app=render(<App/>);
+  await openCard(user,'constructor');
+  await user.type(areaInput(),'14');
+  await user.click(screen.getByRole('button',{name:'4 mm'}));
+  app.unmount();
+  app=render(<App/>);
+  expect(areaInput()).toHaveValue('14');
+  expect(screen.getByRole('button',{name:'4 mm'})).toHaveAttribute('aria-pressed','true');
+  await user.click(calculateButton());
+  app.unmount();
+  app=render(<App/>);
+  expect(screen.getByRole('heading',{name:'Tu estimado'})).toBeVisible();
+  await user.click(screen.getByRole('button',{name:'Añadir a mi cotización'}));
+  app.unmount();
+  app=render(<App/>);
+  expect(screen.getByRole('heading',{name:'Mi cotización'})).toBeVisible();
+  expect(screen.getByRole('heading',{name:'Adeblok Constructor Cemix'})).toBeVisible();
+  await user.click(screen.getByRole('button',{name:/Editar Adeblok Constructor/}));
+  expect(areaInput()).toHaveValue('14');
+  await user.click(calculateButton());
+  app.unmount();
+  app=render(<App/>);
+  await user.click(screen.getByRole('button',{name:'Guardar cambios en mi cotización'}));
+  expect(within(screen.getByRole('list',{name:'Materiales de mi cotización'})).getAllByRole('listitem')).toHaveLength(1);
+  await user.click(screen.getByRole('button',{name:/Quitar Adeblok Constructor/}));
+  app.unmount();
+  render(<App/>);
+  expect(screen.getByRole('button',{name:'Ir al catálogo'})).toBeVisible();
+ });
+
+ it('reúne estimados, conserva las medidas al editar y actualiza el total y WhatsApp al quitar partidas',async()=>{
+  const user=userEvent.setup();render(<App/>);
+  const save=async(name:string)=>{
+   await user.click(calculateButton());
+   await user.click(screen.getByRole('button',{name}));
+   expect(screen.getByRole('heading',{name:'Mi cotización'})).toHaveFocus();
+  };
+  await openCard(user,'constructor');
+  await user.type(areaInput(),'14');
+  await user.click(screen.getByRole('button',{name:'4 mm'}));
+  await save('Añadir a mi cotización');
+  await user.click(screen.getByRole('button',{name:'Agregar otro material'}));
+  expect(screen.getByRole('button',{name:'Ver mi cotización (1)'})).toBeVisible();
+  await openCard(user,'cinco');
+  await user.click(screen.getByRole('button',{name:'Ya sé los m²'}));
+  await user.type(areaInput(),'19');
+  await save('Añadir a mi cotización');
+  const list=()=>within(screen.getByRole('list',{name:'Materiales de mi cotización'}));
+  expect(list().getAllByRole('listitem')).toHaveLength(2);
+  expect(screen.getByText('$1,800 MXN')).toBeVisible();
+  const message=()=>{
+   const url=new URL(screen.getByRole('link',{name:'Enviar cotización por WhatsApp'}).getAttribute('href')!);
+   expect(url.pathname).toBe('/522321125107');
+   return url.searchParams.get('text');
+  };
+  expect(message()).toContain('Adeblok Constructor Cemix');
+  expect(message()).toContain('Impercool 5 años');
+  expect(message()).toContain('Total estimado: $1,800 MXN');
+
+  await user.click(list().getByRole('button',{name:/Editar Adeblok Constructor/}));
+  expect(areaInput()).toHaveValue('14');
+  expect(screen.getByRole('button',{name:'4 mm'})).toHaveAttribute('aria-pressed','true');
+  await user.clear(areaInput());
+  await user.type(areaInput(),'7');
+  await save('Guardar cambios en mi cotización');
+  expect(list().getAllByRole('listitem')).toHaveLength(2);
+  expect(screen.getByText('$1,550 MXN')).toBeVisible();
+
+  await user.click(list().getByRole('button',{name:/Quitar Impercool/}));
+  expect(list().getAllByRole('listitem')).toHaveLength(1);
+  expect(message()).not.toContain('Impercool 5 años');
+  expect(message()).toContain('Total estimado: $250 MXN');
+  await user.click(list().getByRole('button',{name:/Quitar Adeblok/}));
+  expect(screen.getByRole('button',{name:'Ir al catálogo'})).toBeVisible();
+  expect(screen.queryByRole('link',{name:'Enviar cotización por WhatsApp'})).not.toBeInTheDocument();
+ });
  it('cada tarjeta abre medidas con su producto sin volver a pedir trabajo',async()=>{
   const user=userEvent.setup();render(<App/>);
   for(const product of products.filter(p=>p.quotable!==false)){
@@ -195,11 +306,11 @@ describe('Navegación y cotización',()=>{
   const user=userEvent.setup();render(<App/>);await openWork(user,'sellados');expect(screen.getByLabelText('Largo (m) · Tramo 1')).toBeVisible();expect(screen.getByRole('button',{name:'Calcular cubetas y costo'})).toBeVisible();expect(screen.queryByLabelText('Área de superficie 1 (m²)')).not.toBeInTheDocument();
  });
  it('combina búsqueda y categoría, conserva ambas y restaura el desplazamiento',async()=>{
-  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por nombre'),'Impercool');expect(screen.getAllByRole('article')).toHaveLength(4);
+  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por producto o trabajo'),'Impercool');expect(screen.getAllByRole('article')).toHaveLength(4);
   await user.click(screen.getByRole('button',{name:'Impermeabilización'}));
   expect(screen.getAllByRole('article')).toHaveLength(3);expect(screen.getByRole('button',{name:'Impermeabilización'})).toHaveAttribute('aria-pressed','true');
   screen.getByRole('main').scrollTop=440;await openCard(user,'siete');await user.click(screen.getByRole('link',{name:/Volver al catálogo/}));
-  expect(screen.getByLabelText('Buscar por nombre')).toHaveValue('Impercool');expect(screen.getByText(/Impermeabilización · 3 resultados/)).toBeVisible();expect(screen.getByRole('main').scrollTop).toBe(440);
+  expect(screen.getByLabelText('Buscar por producto o trabajo')).toHaveValue('Impercool');expect(screen.getByText(/Impermeabilización · 3 resultados/)).toBeVisible();expect(screen.getByRole('main').scrollTop).toBe(440);
   await user.click(screen.getByRole('button',{name:'Todas'}));expect(screen.getAllByRole('article')).toHaveLength(4);
  });
  it('copia el resumen y confirma solamente cuando el portapapeles responde',async()=>{
@@ -273,7 +384,7 @@ describe('Navegación y cotización',()=>{
   within(group).getByRole('button',{name:'Impermeabilización'}).focus();await user.keyboard('{Enter}');expect(screen.getAllByRole('article')).toHaveLength(3);expect(within(group).getByRole('button',{name:'Impermeabilización'})).toHaveAttribute('aria-pressed','true');
  });
  it('las categorías rápidas combinan su filtro con la búsqueda',async()=>{
-  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por nombre'),'Cemix');await user.click(screen.getByRole('button',{name:'Muros'}));expect(screen.getAllByRole('article')).toHaveLength(2);await user.click(screen.getByRole('button',{name:'Pisos'}));expect(screen.getAllByRole('article')).toHaveLength(1);expect(card('mortero')).toBeVisible();await user.click(screen.getByRole('button',{name:'Todas'}));expect(screen.getAllByRole('article')).toHaveLength(4);
+  const user=userEvent.setup();render(<App/>);await user.type(screen.getByLabelText('Buscar por producto o trabajo'),'Cemix');await user.click(screen.getByRole('button',{name:'Muros'}));expect(screen.getAllByRole('article')).toHaveLength(2);await user.click(screen.getByRole('button',{name:'Pisos'}));expect(screen.getAllByRole('article')).toHaveLength(1);expect(card('mortero')).toBeVisible();await user.click(screen.getByRole('button',{name:'Todas'}));expect(screen.getAllByRole('article')).toHaveLength(4);
  });
  it.each(Object.entries(plusThicknessYields))('Adeblok Plus a %s mm usa %s m² por bulto de 40 kg',async(mm,yieldValue)=>{
   const user=userEvent.setup();render(<App/>);await openCard(user,'plus');
